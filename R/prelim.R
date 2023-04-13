@@ -13,6 +13,7 @@ library(lme4)
 library(orchaRd)
 library(gptstudio)
 library(metafor)
+library(patchwork)
 
 # install.packages("pak")
 #pak::pak("MichelNivard/gptstudio")
