@@ -1,0 +1,13 @@
+---
+title: "test"
+---
+
+```{r}
+
+test <- function(x) {
+  x <- x + 1
+  x
+}
+
+test(10)
+```

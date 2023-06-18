@@ -21,7 +21,7 @@ library(patchwork)
 dat_full <- read.csv(here("data/dat_04_04_2023.csv"))
 
 # function for calculating variance
-Vd <- function(d, n1, n2, design, r = 0.5){
+Vd_func <- function(d, n1, n2, design, r = 0.5){
   # independent design
   if(design == "among"){
     var <- (n1 + n2) / (n1*n2) + d^2 / (2*(n1 + n2 -2))
@@ -52,7 +52,7 @@ dat_full$Obs_ID <- 1:nrow(dat_full)
 dat_full$SMD <- dat_full$d*dat_full$Direction
 
 # filtering very large variance and also very small sample size
-dat_full %>% filter(Vd < 10 & Ncontrol > 3 & NTreat > 3) -> dat_int
+dat_int <- dat_full %>% filter(Vd < 10 & Ncontrol > 3 & NTreat > 3)
 
 dim(dat_full)
 dim(dat_int)
@@ -164,6 +164,30 @@ orchard_plot(mod2,
              data = dat, 
              xlab = "Standardised mean differnece (SMD)")
 
+# heteroscadasticity model
+
+mod2b <- rma.mv(yi = SMD, 
+               V = Vd, 
+               random = list(~1|FocalSpL , 
+                             ~1 | RecNo, 
+                             ~Type | Obs_ID), 
+               mod = ~ Type - 1, 
+               struct = "DIAG",
+               test = "t",
+               method = "REML", 
+               sparse = TRUE,
+               data = dat)
+
+summary(mod2b)
+
+test<-mod_results(mod2b, group = "RecNo", mod = "Type", data = dat)
+
+orchard_plot(mod2b, 
+             mod = "Type",
+             group = "RecNo", 
+             data = dat, 
+             xlab = "Standardised mean differnece (SMD)")
+
 # Category of responses
 
 mod3 <- rma.mv(yi = SMD, 
@@ -219,11 +243,11 @@ orchard_plot(mod1a,
 mod1b <- rma.mv(yi = SMD, 
                V = Vd, 
                random = list(~1|FocalSpL , 
-                             ~1 | RecNo, 
-                             ~1 | Obs_ID), 
-               mod = ~ Treat_mod - 1, 
+                             ~1 | RecNo,
+                             ~1 | Obs_ID),
+               mod = ~ Treat_mod - 1,
                test = "t",
-               method = "REML", 
+               method = "REML",
                sparse = TRUE,
                data = dat_cost)
 
@@ -231,8 +255,8 @@ summary(mod1b)
 
 orchard_plot(mod1b, 
              mod = "Treat_mod",
-             group = "RecNo", 
-             data = dat_cost, 
+             group = "RecNo",
+             data = dat_cost,
              xlab = "SMD: Care, Intake and Costly")
 
 
