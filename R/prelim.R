@@ -18,31 +18,22 @@ library(patchwork)
 # install.packages("pak")
 #pak::pak("MichelNivard/gptstudio")
 
-dat_full <- read.csv(here("data/dat_04_04_2023.csv"))
+#dat_full <- read.csv(here("data/dat_04_04_2023.csv"))
+dat_full <- read.csv(here("data/dat_23_06_2023.csv"))
 
 # function for calculating variance
 Vd_func <- function(d, n1, n2, design, r = 0.5){
   # independent design
   if(design == "among"){
-    var <- (n1 + n2) / (n1*n2) + d^2 / (2*(n1 + n2 -2))
+    var <- (n1 + n2) / (n1*n2) + d^2 / (2 * (n1 + n2 - 2)) # variance
   } else { # dependent design
-    var <- 2*(1-r) / n1 + d^2 / (2*(n1 - 1))
+    var <- 2*(1-r) / n1 + d^2 / (2*(n1 - 1)) # variance
   }
-  var
+  var # return variance
 }
 
-# this does not work 
-# this is because "Error in if (design == "among") { : the condition has length > 1"
-#dat_full$Vd <- with(dat, Vd(d, NTreat, Ncontrol, design = Design))
+dat_full$Vd <- with(dat_full, pmap_dbl(list(d, NTreat, Ncontrol, Design), Vd_func))
 
-
-# TODO - some data checking needs to be a bit later
-
-# this works
-dat_full$Vd <- with(dat_full, mapply(Vd_func, d, 
-                                n1 = NTreat, 
-                                n2 = Ncontrol, 
-                                design = Design))
 
 # observation id
 dat_full$Obs_ID <- 1:nrow(dat_full)
@@ -256,7 +247,7 @@ summary(mod1b)
 orchard_plot(mod1b, 
              mod = "Treat_mod",
              group = "RecNo",
-             data = dat_cost,
+             #data = dat_cost,
              xlab = "SMD: Care, Intake and Costly")
 
 
