@@ -35,6 +35,15 @@ Vd_func <- function(d, n1, n2, design, r = 0.5){
 dat_full$Vd <- with(dat_full, pmap_dbl(list(d, NTreat, Ncontrol, Design), Vd_func))
 
 
+# extra useful function
+# function for getting mean and sd from median, quartiles and sample size
+get_mean_sd <- function(median, q1, q3, n){
+  sd <- (q3 - q1) / (2 * (qnorm((0.75 * n - 0.125) / (n + 0.25)))) # sd
+  mean <- (median + q1 + q3)/3 # mean
+  c(mean, sd)
+}
+
+
 # observation id
 dat_full$Obs_ID <- 1:nrow(dat_full)
 
@@ -43,7 +52,7 @@ dat_full$Obs_ID <- 1:nrow(dat_full)
 dat_full$SMD <- dat_full$d*dat_full$Direction
 
 # filtering very large variance and also very small sample size
-dat_int <- dat_full %>% filter(Vd < 10 & Ncontrol > 3 & NTreat > 3)
+dat_int <- dat_full %>% filter(Ncontrol > 3 & NTreat > 3)
 
 dim(dat_full)
 dim(dat_int)
