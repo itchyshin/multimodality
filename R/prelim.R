@@ -32,27 +32,31 @@ Vd_func <- function(d, n1, n2, design, r = 0.5){
   var # return variance
 }
 
-dat_full$Vd <- with(dat_full, pmap_dbl(list(d, NTreat, Ncontrol, Design), Vd_func))
+# getting Hedges' g - get small size bias corrected effect size
+dat_full$SMD <- dat_full$d / (1 - 3/(4 * (dat_full$NTreat + dat_full$Ncontrol) - 9))
+
+# flipping d 
+dat_full$SMD <- dat_full$d*dat_full$Direction*dat_full$PredictedDirection
+
+
+# calucating Vd
+dat_full$Vd <- with(dat_full, pmap_dbl(list(SMD, NTreat, Ncontrol, Design), Vd_func))
 
 
 # extra useful function
 # function for getting mean and sd from median, quartiles and sample size
-get_mean_sd <- function(median, q1, q3, n){
-  sd <- (q3 - q1) / (2 * (qnorm((0.75 * n - 0.125) / (n + 0.25)))) # sd
-  mean <- (median + q1 + q3)/3 # mean
-  c(mean, sd)
-}
+# get_mean_sd <- function(median, q1, q3, n){
+#   sd <- (q3 - q1) / (2 * (qnorm((0.75 * n - 0.125) / (n + 0.25)))) # sd
+#   mean <- (median + q1 + q3)/3 # mean
+#   c(mean, sd)
+# }
 
 
 # observation id
 dat_full$Obs_ID <- 1:nrow(dat_full)
 
-# flipping d 
-
-dat_full$SMD <- dat_full$d*dat_full$Direction
-
 # filtering very large variance and also very small sample size
-dat_int <- dat_full %>% filter(Ncontrol > 3 & NTreat > 3)
+dat_int <- dat_full %>% filter(Vd < 10 & Ncontrol > 2 & NTreat > 2)
 
 dim(dat_full)
 dim(dat_int)
@@ -117,9 +121,8 @@ mod0 <- rma.mv(yi = SMD,
 
 summary(mod0)
 
-orchard_plot(mod0, 
-             group = "RecNo", 
-             data = dat, 
+orchard_plot(mod0,
+             group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
 
 
@@ -141,7 +144,6 @@ summary(mod1)
 orchard_plot(mod1, 
              mod = "Treat_mod",
              group = "RecNo", 
-             data = dat, 
              xlab = "Standardised mean differnece (SMD)")
 
 # Type of responses
@@ -161,7 +163,6 @@ summary(mod2)
 orchard_plot(mod2, 
              mod = "Type",
              group = "RecNo", 
-             data = dat, 
              xlab = "Standardised mean differnece (SMD)")
 
 # heteroscadasticity model
@@ -180,12 +181,9 @@ mod2b <- rma.mv(yi = SMD,
 
 summary(mod2b)
 
-test<-mod_results(mod2b, group = "RecNo", mod = "Type", data = dat)
-
 orchard_plot(mod2b, 
              mod = "Type",
-             group = "RecNo", 
-             data = dat, 
+             group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
 
 # Category of responses
@@ -206,7 +204,6 @@ summary(mod3)
 orchard_plot(mod3, 
              mod = "Category",
              group = "RecNo", 
-             data = dat, 
              xlab = "Standardised mean differnece (SMD)",
              angle = 45)
 
