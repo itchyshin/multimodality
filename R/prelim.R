@@ -207,6 +207,30 @@ orchard_plot(mod3,
              xlab = "Standardised mean differnece (SMD)",
              angle = 45)
 
+# testing the number of stimuli
+
+
+mod4 <- rma.mv(yi = SMD, 
+               V = Vd, 
+               random = list(~1|FocalSpL , 
+                             ~1 | RecNo, 
+                             ~1 | Obs_ID), 
+               mod = ~ Treat_No, 
+               test = "t",
+               method = "REML", 
+               sparse = TRUE,
+               data = dat)
+
+summary(mod4)
+
+bubble_plot(mod4,
+             mod = "Treat_No",
+             group = "RecNo",
+             xlab = "The number of simuli")
+
+############
+# Not run
+############
 ## putting results separtely
 
 dat_ant <- dat[dat$Category == "AntiPredator" , ]
