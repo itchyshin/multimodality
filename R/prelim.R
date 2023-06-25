@@ -107,6 +107,9 @@ dat_int %>% mutate(Treat_mod = case_when(Treatment == "A" ~ "A",
 
                       ) -> dat
 
+# creating data just for A, V, and AV 
+dat_short <- dat %>% filter(Treat_mod == "A" | Treat_mod == "V" | Treat_mod == "AV")
+
 # main meta-analysis
 
 mod0 <- rma.mv(yi = SMD, 
@@ -123,7 +126,8 @@ summary(mod0)
 
 orchard_plot(mod0,
              group = "RecNo",
-             xlab = "Standardised mean differnece (SMD)")
+             xlab = "Standardised mean differnece (SMD)",
+             branch.size = 3)
 
 
 # meta-regression
@@ -144,7 +148,66 @@ summary(mod1)
 orchard_plot(mod1, 
              mod = "Treat_mod",
              group = "RecNo", 
-             xlab = "Standardised mean differnece (SMD)")
+             xlab = "Standardised mean differnece (SMD)",
+             branch.size = 3)
+
+
+mod1a <- rma.mv(yi = SMD, 
+                   V = Vd, 
+                   random = list(~1|FocalSpL , 
+                                 ~1 | RecNo, 
+                                 ~1 | Obs_ID), 
+                   mod = ~ Treat_mod, 
+                   test = "t",
+                   method = "REML", 
+                   sparse = TRUE,
+                   data = dat_short)
+
+summary(mod1a)
+
+mod1b <- rma.mv(yi = SMD, 
+                V = Vd, 
+                random = list(~1|FocalSpL , 
+                              ~1 | RecNo, 
+                              ~1 | Obs_ID), 
+                mod = ~ relevel(factor(Treat_mod), ref = "AV"), 
+                test = "t",
+                method = "REML", 
+                sparse = TRUE,
+                data = dat_short)
+
+summary(mod1b)
+
+
+orchard_plot(mod1a, 
+             mod = "Treat_mod",
+             group = "RecNo", 
+             xlab = "Standardised mean differnece (SMD)",
+             branch.size = 3)
+
+
+mod1c <- rma.mv(yi = SMD, 
+                V = Vd, 
+                random = list(~1|FocalSpL , 
+                              ~1 | RecNo, 
+                              ~ Treat_mod | Obs_ID), 
+                mod = ~ Treat_mod, 
+                test = "t",
+                struct = "DIAG",
+                method = "REML", 
+                sparse = TRUE,
+                data = dat_short)
+
+summary(mod1c)
+
+anova(mod1a, mod1c)
+
+orchard_plot(mod1c, 
+             mod = "Treat_mod",
+             group = "RecNo", 
+             xlab = "Standardised mean differnece (SMD)",
+             branch.size = 3)
+
 
 # Type of responses
 mod2 <- rma.mv(yi = SMD, 
@@ -163,7 +226,8 @@ summary(mod2)
 orchard_plot(mod2, 
              mod = "Type",
              group = "RecNo", 
-             xlab = "Standardised mean differnece (SMD)")
+             xlab = "Standardised mean differnece (SMD)",
+             branch.size = 3)
 
 # heteroscadasticity model
 
@@ -184,7 +248,8 @@ summary(mod2b)
 orchard_plot(mod2b, 
              mod = "Type",
              group = "RecNo",
-             xlab = "Standardised mean differnece (SMD)")
+             xlab = "Standardised mean differnece (SMD)",
+             branch.size = 3)
 
 # Category of responses
 
@@ -205,7 +270,8 @@ orchard_plot(mod3,
              mod = "Category",
              group = "RecNo", 
              xlab = "Standardised mean differnece (SMD)",
-             angle = 45)
+             angle = 45,
+             branch.size = 3)
 
 # testing the number of stimuli
 
@@ -227,6 +293,7 @@ bubble_plot(mod4,
              mod = "Treat_No",
              group = "RecNo",
              xlab = "The number of simuli")
+
 
 ############
 # Not run
