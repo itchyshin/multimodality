@@ -15,6 +15,7 @@ library(gptstudio)
 library(metafor)
 library(patchwork)
 library(alluvial)
+library(ggalluvial)
 
 # install.packages("pak")
 #pak::pak("MichelNivard/gptstudio")
@@ -107,6 +108,9 @@ dat_int %>% mutate(Treat_mod = case_when(Treatment == "A" ~ "A",
 # creating data just for A, V, and AV 
 dat_short <- dat %>% filter(Treat_mod == "A" | Treat_mod == "V" | Treat_mod == "AV")
 
+# for add-on, we only need V and AV
+dat_short_add <- dat %>% filter(Treat_mod == "AV" | Treat_mod == "V")
+
 
 # some data exploration
 # dat %>% group_by(Treat_mod) %>% summarise(n = n())
@@ -115,12 +119,30 @@ tab <- table(dat_short$Treat_mod, dat_short$Type)
 
 # visualise this table using alluvial plot?
 # https://cran.r-project.org/web/packages/alluvial/vignettes/alluvial.html
-
 dat_short %>% group_by(Treat_mod, Type) %>%
   summarise(n = n()) -> tab1
 alluvial(tab1[,1:2], freq = tab1$n)
 
+# using ggaruvial
+ggplot(tab1,
+       aes(y = n,
+           axis1 = Treat_mod,
+           axis2 = Type)) +
+  geom_alluvium(aes(fill = Treat_mod)) +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 6, aes(label = after_stat(stratum))) +
+  theme(legend.position = "none") +
+  theme(legend.position = "none",
+        axis.text.x = element_blank()) + # remove x-axis labels
+  ylab("Frequency") + 
+  xlab("Treatment modality and trait type")
+
+# other ones
+#https://www.r-bloggers.com/2018/10/data-exploration-with-alluvial-plots-an-introduction-to-easyalluvial/
+
+#####################
 # main meta-analysis
+######################
 
 mod0 <- rma.mv(yi = SMD, 
        V = Vd, 
@@ -217,6 +239,24 @@ orchard_plot(mod1c,
              group = "RecNo", 
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
+
+
+# the effect of additions
+# this is a part of sensitivity analysis
+
+mod5 <- rma.mv(yi = SMD, 
+                V = Vd, 
+                random = list(~1|FocalSpL , 
+                              ~1 | RecNo, 
+                              ~ Treat_mod | Obs_ID), 
+                mod = ~ Treat_mod*Add_on - 1,, 
+                test = "t",
+                struct = "DIAG",
+                method = "REML", 
+                sparse = TRUE,
+                data = dat_short_add)
+
+summary(mod5)
 
 
 # Type of responses
