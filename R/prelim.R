@@ -24,17 +24,6 @@ dat_full <- read.csv(here("data/dat_23_06_2023.csv"))
 
 # function for calculating variance
 Vd_func <- function(d, n1, n2, design, r = 0.5){
-  # check inputs
-  if(!is.numeric(d) | !is.numeric(n1) | !is.numeric(n2) | !is.numeric(r)){
-    stop("Inputs must be numeric")
-  }
-  if(!is.character(design)){
-    stop("Design must be a character vector")
-  }
-  if(design != "among" & design != "within"){
-    stop("Design must be either 'among' or 'within'")
-  }
-  
   # independent design
   if(design == "among"){
     var <- (n1 + n2) / (n1*n2) + d^2 / (2 * (n1 + n2 - 2)) # variance
@@ -73,13 +62,9 @@ dat_int <- dat_full %>% filter(Vd < 10 & Ncontrol > 2 & NTreat > 2)
 dim(dat_full)
 dim(dat_int)
 
-# TODO 
+
 # sorting out modality stuff
-# creat - 1,2,3 modality - also easier classification A, O, V (AOV = L)
-# summary(as.factor(dat_full$Treatment))
-#    A  AV AVG AVM   L   O  OV   V  VG  VM  VP 
-# 344  78   6  16   9  24  21 161  22  16   4 
-# expectation is
+# creat - 1,2,3 modality - also easier classification A, O, V (AOV = L) 
 
 dat_int %>% mutate(Treat_mod = case_when(Treatment == "A" ~ "A",
                                           Treatment == "AV" ~ "AV",
@@ -126,14 +111,14 @@ dat_short <- dat %>% filter(Treat_mod == "A" | Treat_mod == "V" | Treat_mod == "
 # some data exploration
 # dat %>% group_by(Treat_mod) %>% summarise(n = n())
 # using a table to see overalps between Treat_mod and Type
-table(dat_short$Treat_mod, dat_short$Type)
+tab <- table(dat_short$Treat_mod, dat_short$Type)
 
 # visualise this table using alluvial plot?
 # https://cran.r-project.org/web/packages/alluvial/vignettes/alluvial.html
 
 dat_short %>% group_by(Treat_mod, Type) %>%
-  summarise(n = sum(Freq)) -> tab1
-
+  summarise(n = n()) -> tab1
+alluvial(tab1[,1:2], freq = tab1$n)
 
 # main meta-analysis
 
