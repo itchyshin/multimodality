@@ -11,11 +11,12 @@ library(tidyverse)
 library(here)
 library(lme4)
 library(orchaRd)
-library(gptstudio)
+#library(gptstudio)
 library(metafor)
 library(patchwork)
 library(alluvial)
 library(ggalluvial)
+library(easyalluvial)
 library(ape)
 library(clubSandwich)
 
@@ -34,7 +35,8 @@ tree_top <- read.tree(here("R/birds_MA.tre"))
 # tree with branch lengths
 tree <- compute.brlen(tree_top)
 plot(tree)
-
+# turning it into a correlation matrix
+cor_tree <- vcv(tree,corr=T)
 
 # function for calculating variance
 Vd_func <- function(d, n1, n2, design, r = 0.5){
@@ -69,6 +71,7 @@ dat_full$Vd <- with(dat_full, pmap_dbl(list(SMD, NTreat, Ncontrol, Design), Vd_f
 
 # observation id
 dat_full$Obs_ID <- 1:nrow(dat_full)
+dat_full$Phylo <- dat_full$FocalSpL
 
 # filtering very large variance and also very small sample size
 dat_int <- dat_full %>% filter(Vd < 10 & Ncontrol > 2 & NTreat > 2)
@@ -152,8 +155,12 @@ ggplot(tab1,
 
 # other ones - easyalluvial
 #https://www.r-bloggers.com/2018/10/data-exploration-with-alluvial-plots-an-introduction-to-easyalluvial/
-# TODO
+# using easyalluvial and alluvial_wide
+#factor_cols <- dat %>% select_if(is.factor) %>% names()
 
+#alluvial_wide(dat_short, , max_variables = 5
+#                , fill_by = 'first_variable' ) %>%
+#  add_marginal_histograms(dat_short)
 
 # exploratory analysis
 # check each columns for missing values and other stuff
@@ -168,17 +175,31 @@ summary(dat)
 # main meta-analysis
 ######################
 
-mod0 <- rma.mv(yi = SMD, 
-       V = Vd, 
-       random = list(~1|FocalSpL ,
+# VCV matrix
+
+VCV <- vcalc(vi = dat$Vd,
+             cluster = dat$SubjectID,
+             rho = 0.5)
+
+mod0 <- rma.mv(yi = SMD,
+       V = VCV, 
+       random = list(~1 | Phylo,
+                     ~1 | FocalSpL,
                      ~1 | RecNo,
-                     ~1 | Obs_ID), 
+                    # ~1 | SubjectID, # incoprated as VCV
+                     ~1 | Obs_ID),
+       R= list(Plant_Phylogeny = cor_tree),
        test = "t",
        method = "REML", 
        sparse = TRUE,
        data = dat)
 
 summary(mod0)
+
+# TODO - think about whether we add this or not
+robust(mod0, cluster = dat$SubjectID)
+
+round(i2_ml(mod0), 2)
 
 orchard_plot(mod0,
              group = "RecNo",
