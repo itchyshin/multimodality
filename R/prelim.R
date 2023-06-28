@@ -16,12 +16,25 @@ library(metafor)
 library(patchwork)
 library(alluvial)
 library(ggalluvial)
+library(ape)
+library(clubSandwich)
 
 # install.packages("pak")
 #pak::pak("MichelNivard/gptstudio")
 
 #dat_full <- read.csv(here("data/dat_04_04_2023.csv"))
-dat_full <- read.csv(here("data/dat_23_06_2023.csv"))
+dat_full <- read.csv(here("data/dat_28_06_2023.csv"))
+
+# add phylogenetic tree - only topologies
+# TODO? - we could get better tree from birdtree.org
+# we can do 50 different trees as in 
+# https://academic.oup.com/sysbio/article/68/4/632/5267840
+tree_top <- read.tree(here("R/birds_MA.tre"))
+
+# tree with branch lengths
+tree <- compute.brlen(tree_top)
+plot(tree)
+
 
 # function for calculating variance
 Vd_func <- function(d, n1, n2, design, r = 0.5){
@@ -137,8 +150,19 @@ ggplot(tab1,
   ylab("Frequency") + 
   xlab("Treatment modality and trait type")
 
-# other ones
+# other ones - easyalluvial
 #https://www.r-bloggers.com/2018/10/data-exploration-with-alluvial-plots-an-introduction-to-easyalluvial/
+# TODO
+
+
+# exploratory analysis
+# check each columns for missing values and other stuff
+# dat %>% map_df(~sum(is.na(.)))
+
+dat <- dat %>%
+  mutate_if(is.character, as.factor)
+
+summary(dat)
 
 #####################
 # main meta-analysis
