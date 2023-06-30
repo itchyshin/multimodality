@@ -71,7 +71,7 @@ dat_full$Vd <- with(dat_full, pmap_dbl(list(SMD, NTreat, Ncontrol, Design), Vd_f
 
 # observation id
 dat_full$Obs_ID <- 1:nrow(dat_full)
-dat_full$Phylo <- dat_full$FocalSpL
+dat_full$Phylo <- gsub(" ", "_", dat_full$FocalSpL)
 
 # filtering very large variance and also very small sample size
 dat_int <- dat_full %>% filter(Vd < 10 & Ncontrol > 2 & NTreat > 2)
@@ -153,6 +153,7 @@ ggplot(tab1,
   ylab("Frequency") + 
   xlab("Treatment modality and trait type")
 
+# TOOD - use easyalluvial to make one fig
 # other ones - easyalluvial
 #https://www.r-bloggers.com/2018/10/data-exploration-with-alluvial-plots-an-introduction-to-easyalluvial/
 # using easyalluvial and alluvial_wide
@@ -186,9 +187,9 @@ mod0 <- rma.mv(yi = SMD,
        random = list(~1 | Phylo,
                      ~1 | FocalSpL,
                      ~1 | RecNo,
-                    # ~1 | SubjectID, # incoprated as VCV
+                     ~1 | SubjectID, # incoprated as VCV
                      ~1 | Obs_ID),
-       R= list(Plant_Phylogeny = cor_tree),
+       #R = list(Phylo = cor_tree),
        test = "t",
        method = "REML", 
        sparse = TRUE,
@@ -208,12 +209,21 @@ orchard_plot(mod0,
 
 
 # meta-regression
+
+
 ## Treatment
+#dat$Phylo <- as.character(dat$Phylo)
+#match(dat$Phylo, colnames(cor_tree))
+#match(colnames(cor_tree), dat$Phylo)
+
 mod1 <- rma.mv(yi = SMD, 
-               V = Vd, 
-               random = list(~1|FocalSpL , 
-                             ~1 | RecNo, 
-                             ~1 | Obs_ID), 
+               V = VCV, 
+               random = list(#~1 | Phylo,
+                             ~1 | FocalSpL,
+                             ~1 | RecNo,
+                             #~1 | SubjectID, # incoprated as VCV
+                             ~1 | Obs_ID),
+               #R = list(Phylo = cor_tree), 
                mod = ~ Treat_mod - 1, 
                test = "t",
                method = "REML", 
@@ -228,6 +238,8 @@ orchard_plot(mod1,
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
 
+###############################################
+# focusing on A, V, and AV
 
 mod1a <- rma.mv(yi = SMD, 
                    V = Vd, 
@@ -294,7 +306,7 @@ mod5 <- rma.mv(yi = SMD,
                 random = list(~1|FocalSpL , 
                               ~1 | RecNo, 
                               ~ Treat_mod | Obs_ID), 
-                mod = ~ Treat_mod*Add_on - 1,, 
+                mod = ~ Treat_mod*Add_on - 1,
                 test = "t",
                 struct = "DIAG",
                 method = "REML", 
@@ -303,6 +315,7 @@ mod5 <- rma.mv(yi = SMD,
 
 summary(mod5)
 
+################################################
 
 # Type of responses
 mod2 <- rma.mv(yi = SMD, 

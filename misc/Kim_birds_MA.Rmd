@@ -68,15 +68,19 @@ taxa[taxa$approximate_match==TRUE, ] ##5 species with typos in their names - fix
 # 86  thamnomanes schisogynus Thamnomanes schistogynus              TRUE  381762      FALSE                    1
 ```
 
+Unique name is the name displayed on the tree (tip.label).
 
-Fix species names in the data file - as a new Species column.
-```{r correct specis names data, message = FALSE, echo = TRUE, eval = TRUE, warning = FALSE}
+Fix species names in the data file - as a new Species column. Step 1 - subspecies and approximate matches.    
+
+```{r correct species names data, message = FALSE, echo = TRUE, eval = TRUE, warning = FALSE}
 names(dat)
 
-dat$FocalSpL_corrected <- (dat$FocalSpL) #get list of unique species from FocalSpL column
+dat$FocalSpL_corrected <- dat$FocalSpL #get list of unique species from FocalSpL column
 length(unique(dat$FocalSpL_corrected)) #89 species
 
 #rotl - Warning message: Troglodytes aedon aedon, Troglodytes aedon musculus are not matched - replace
+
+#fix species in teh data set to match the tree
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Troglodytes aedon musculus", "Troglodytes musculus")
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Troglodytes aedon aedon", "Troglodytes aedon")
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Malothrus mater", "Molothrus ater")
@@ -84,6 +88,43 @@ dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Puffinus pacificu", "Ardenna pacifica")
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Aphelocoma coerulescents", "Aphelocoma coerulescens")
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Thamnomanes schisogynus", "Thamnomanes schistogynus")
+
+myspecies <- as.character(unique(dat$FocalSpL_corrected)) #get list of unique species from FocalSpL column
+#str_sort(myspecies) #visual check
+length(myspecies) #88 species
+#length(unique(myspecies)) #88 unique species names
+```
+
+
+```{r rotl taxa again}
+taxa <- tnrs_match_names(names = myspecies, context_name = "Birds")
+dim(taxa) #88 species - all matched
+table(taxa$approximate_match) #0 approximate matches
+```
+
+Get tree 
+
+```{r rotl species tree, warning = FALSE, results=FALSE}
+tree <- tol_induced_subtree(ott_ids = taxa[["ott_id"]], label_format = "name")  
+plot(tree, cex=.6, label.offset =.1, no.margin = TRUE)
+
+tree$tip.label <- gsub(" \\(.*", "", tree$tip.label) #remove comments
+tree$tip.label <- gsub("_"," ", tree$tip.label) #get rid of the underscores
+length(tree$tip.label) #87
+```
+
+Check if species names are matching
+
+```{r}
+#check overlap and differences with taxa list
+intersect(unique(dat$FocalSpL_corrected), tree$tip.label) # 81 overlap
+setdiff(unique(dat$FocalSpL_corrected), tree$tip.label) # 7 in data, not in tree - mostly synonyms
+setdiff(tree$tip.label, unique(dat$FocalSpL_corrected)) # 6 in tree, not in data - mostly synonyms```
+```
+
+Fix mismatched species names (synonyms) in the data file - in the new Species column. Step 2 - use synonyms from tree tip.label.
+
+```{r correct specis names data, message = FALSE, echo = TRUE, eval = TRUE, warning = FALSE}
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Vermivora celata", "Leiothlypis celata")
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Oreothlypis celata", "Leiothlypis celata")
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Parus montanus", "Poecile montanus")
@@ -91,11 +132,11 @@ dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Anas strepera", "Mareca strepera")
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Columbina squammata", "Scardafella squammata")
 dat$FocalSpL_corrected <- replace(dat$FocalSpL_corrected, dat$FocalSpL_corrected == "Parus ater", "Periparus ater")
-
 length(unique(dat$FocalSpL_corrected)) #87 species
 
-# save modified data file
-write.csv(dat, "dat_23_06_2023_ML.csv")
+intersect(unique(dat$FocalSpL_corrected), tree$tip.label) # 81 overlap
+setdiff(unique(dat$FocalSpL_corrected), tree$tip.label) # 7 in data, not in tree - mostly synonyms
+setdiff(tree$tip.label, unique(dat$FocalSpL_corrected)) # 6 in tree, not in data - mostly synonyms
 ```
 
 Check the species list using rotl.   
@@ -107,27 +148,25 @@ dim(taxa) #87 species - all matched
 #table(taxa$approximate_match) #no approximate matches
 ```
 
-Get the initial tree.  
+Get the final tree.  
 
-```{r rotl species tree, warning = FALSE, results=FALSE}
-tree <- tol_induced_subtree(ott_ids = taxa[["ott_id"]], label_format = "name")  
-plot(tree, cex=.6, label.offset =.1, no.margin = TRUE)
+```{r rotl species tree again, warning = FALSE, results=FALSE}
+tree2 <- tol_induced_subtree(ott_ids = taxa[["ott_id"]], label_format = "name")  
+#plot(tree2, cex=.6, label.offset =.1, no.margin = TRUE)
 
-tree$tip.label <- gsub(" \\(.*", "", tree2$tip.label) #remove comments
-tree$tip.label <- gsub("_"," ", tree2$tip.label) #get rid of the underscores
-length(tree$tip.label) #87
+tree2$tip.label <- gsub(" \\(.*", "", tree2$tip.label) #remove comments
+tree2$tip.label <- gsub("_"," ", tree2$tip.label) #get rid of the underscores
+length(tree2$tip.label) #87
 ```
 
 Check matching species and labels.
 
 ```{r re-check tree labels}
-myspecies <- unique(dat$FocalSpL_corrected)
-treespecies <- tree$tip.label
 
 #check overlap and differences with taxa list
-intersect(myspecies, treespecies) # overlap
-setdiff(myspecies, treespecies) # in data, not in tree - mostly synonyms
-setdiff(treespecies, myspecies) # in tree, not in data - mostly synonyms
+intersect(unique(dat$FocalSpL_corrected), tree2$tip.label) # overlap
+setdiff(unique(dat$FocalSpL_corrected), tree2$tip.label) # in data, not in tree - mostly synonyms
+setdiff(tree2$tip.label, unique(dat$FocalSpL_corrected)) # in tree, not in data - mostly synonyms
 
 #check if the tree is really binary 
 is.binary(tree) #TRUE
@@ -138,7 +177,7 @@ is.binary(tree) #TRUE
 Save tree
 
 ```{r save final tree}
-write.tree(tree, file="Kim_birds_MA.tre") #save the tree
+write.tree(tree2, file="Kim_birds_MA.tre") #save the tree
 
 # *NOTE:* underscores within species names on tree tip labals are added automatically
 # tree <- read.tree(file="plot_cooked_fish_MA.tre") #if you need to read in the tree
@@ -158,4 +197,9 @@ dev.off()
 ```
 
 
+Save modified data
 
+```{r save data}
+# save modified data file
+write.csv(dat, "dat_23_06_2023_ML.csv")
+```
