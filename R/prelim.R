@@ -189,7 +189,7 @@ mod0 <- rma.mv(yi = SMD,
                      ~1 | RecNo,
                      ~1 | SubjectID, # incoprated as VCV
                      ~1 | Obs_ID),
-       #R = list(Phylo = cor_tree),
+       R = list(Phylo = cor_tree),
        test = "t",
        method = "REML", 
        sparse = TRUE,
@@ -201,6 +201,26 @@ summary(mod0)
 robust(mod0, cluster = dat$SubjectID)
 
 round(i2_ml(mod0), 2)
+
+# reducted model
+
+mod0r <- rma.mv(yi = SMD,
+       V = VCV, 
+       random = list(#~1 | Phylo,
+                     ~1 | FocalSpL,
+                     ~1 | RecNo,
+                     #~1 | SubjectID, # incoprated as VCV
+                     ~1 | Obs_ID),
+       #R = list(Phylo = cor_tree),
+       test = "t",
+       method = "REML", 
+       sparse = TRUE,
+       data = dat)
+
+summary(mod0r)
+
+round(i2_ml(mod0r), 2)
+
 
 orchard_plot(mod0,
              group = "RecNo",
@@ -218,12 +238,9 @@ orchard_plot(mod0,
 
 mod1 <- rma.mv(yi = SMD, 
                V = VCV, 
-               random = list(#~1 | Phylo,
-                             ~1 | FocalSpL,
+               random = list(~1 | FocalSpL,
                              ~1 | RecNo,
-                             #~1 | SubjectID, # incoprated as VCV
                              ~1 | Obs_ID),
-               #R = list(Phylo = cor_tree), 
                mod = ~ Treat_mod - 1, 
                test = "t",
                method = "REML", 
@@ -239,19 +256,21 @@ orchard_plot(mod1,
              branch.size = 3)
 
 ###############################################
+###############################################
 # focusing on A, V, and AV
 
-mod1a <- rma.mv(yi = SMD, 
-                   V = Vd, 
-                   random = list(~1|FocalSpL , 
-                                 ~1 | RecNo, 
-                                 ~1 | Obs_ID), 
+mod1a <- rma.mv(yi = SMD,
+                   V = Vd,
+                   random = list(~1|FocalSpL,
+                                 ~1 | RecNo,
+                                 ~1 | Obs_ID),
                    mod = ~ Treat_mod, 
                    test = "t",
                    method = "REML", 
                    sparse = TRUE,
                    data = dat_short)
 
+# to look at A vs AV and A vs V
 summary(mod1a)
 
 mod1b <- rma.mv(yi = SMD, 
@@ -265,6 +284,7 @@ mod1b <- rma.mv(yi = SMD,
                 sparse = TRUE,
                 data = dat_short)
 
+# to look at AV vs V and AV vs A (already done)
 summary(mod1b)
 
 
@@ -274,7 +294,7 @@ orchard_plot(mod1a,
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
 
-
+# modeling heteroscedasticity
 mod1c <- rma.mv(yi = SMD, 
                 V = Vd, 
                 random = list(~1|FocalSpL , 
@@ -315,6 +335,7 @@ mod5 <- rma.mv(yi = SMD,
 
 summary(mod5)
 
+################################################
 ################################################
 
 # Type of responses
