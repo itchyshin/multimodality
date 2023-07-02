@@ -121,8 +121,8 @@ dat_full$Phylo <- gsub(" ", "_", dat_full$FocalSpL)
 # filtering very large variance and also very small sample size
 dat_int <- dat_full %>% filter(Vd < 10 & Ncontrol > 2 & NTreat > 2)
 
-dim(dat_full)
-dim(dat_int)
+#dim(dat_full)
+#dim(dat_int)
 
 
 # sorting out modality stuff
