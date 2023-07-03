@@ -228,6 +228,33 @@ robust(mod0, cluster = dat$SubjectID)
 
 round(i2_ml(mod0), 2)
 
+
+# test addition
+
+mod0t <- rma.mv(yi = SMD,
+       V = VCV, 
+       mods = ~ RecNo,
+       random = list(#~1 | Phylo,
+                     ~1 | FocalSpL,
+                     #~1 | RecNo,
+                     ~1 | SubjectID, # incoprated as VCV
+                     ~1 | Obs_ID),
+       R = list(Phylo = cor_tree),
+       test = "t",
+       method = "REML", 
+       sparse = TRUE,
+       data = dat)
+
+summary(mod0t)
+
+orchard_plot(mod0t,
+             mod = "RecNo",
+             group = "SubjectID",
+             xlab = "Standardised mean differnece (SMD)",
+             cb = F,
+             branch.size = 1,
+             angle = 45)
+
 # reducted model
 
 mod0r <- rma.mv(yi = SMD,
@@ -867,7 +894,7 @@ int_type <- mod_results(mod_full, mod = "sln_duration", group = "RecNo", weights
                                    by = "Type")
 
 bubble_plot(int_type, group = "RecNo", mod = "sln_duration", xlab = "ln(duration in days)",
-                     legend.pos = "top.left", condition.nrow = 3)
+                     legend.pos = "top.left", condition.nrow = 3, g = T)
 
 int_trt <- mod_results(mod_full, mod = "sln_duration", group = "RecNo", weights = "prop",
                         by = "Treat_mod")
