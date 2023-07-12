@@ -65,11 +65,11 @@ dat_full$Vd <- with(dat_full, pmap_dbl(list(SMD, NTreat, Ncontrol, Design), Vd_f
 
 # extra useful function
 # function for getting mean and sd from median, quartiles and sample size
-# get_mean_sd <- function(median, q1, q3, n){
-#   sd <- (q3 - q1) / (2 * (qnorm((0.75 * n - 0.125) / (n + 0.25)))) # sd
-#   mean <- (median + q1 + q3)/3 # mean
-#   c(mean, sd)
-# }
+get_mean_sd <- function(median, q1, q3, n){
+  sd <- (q3 - q1) / (2 * (qnorm((0.75 * n - 0.125) / (n + 0.25)))) # sd
+  mean <- (median + q1 + q3)/3 # mean
+  c(mean, sd)
+}
 
 
 # observation id
