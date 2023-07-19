@@ -27,8 +27,8 @@ eval(metafor:::.MuMIn)
 #pak::pak("MichelNivard/gptstudio")
 
 #dat_full <- read.csv(here("data/dat_04_04_2023.csv"))
-dat_full <- read.csv(here("data/dat_28_06_2023.csv"))
-
+#dat_full <- read.csv(here("data/dat_28_06_2023.csv"))
+dat_full <- read.csv(here("data/dat_19_07_2023.csv"))
 # add phylogenetic tree - only topologies
 # TODO? - we could get better tree from birdtree.org
 # we can do 50 different trees as in 
@@ -77,7 +77,7 @@ dat_full$Obs_ID <- 1:nrow(dat_full)
 dat_full$Phylo <- gsub(" ", "_", dat_full$FocalSpL)
 
 # filtering very large variance and also very small sample size
-dat_int <- dat_full %>% filter(Vd < 10 & Ncontrol > 2 & NTreat > 2)
+dat_int <- dat_full %>% filter(Ncontrol > 2 & NTreat > 2)
 
 dim(dat_full)
 dim(dat_int)
@@ -233,7 +233,7 @@ round(i2_ml(mod0), 2)
 
 mod0t <- rma.mv(yi = SMD,
        V = VCV, 
-       mods = ~ RecNo,
+       #mods = ~ RecNo,
        random = list(#~1 | Phylo,
                      ~1 | FocalSpL,
                      #~1 | RecNo,
