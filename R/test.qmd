@@ -65,7 +65,8 @@ eval(metafor:::.MuMIn)
 
 ```{r}
 #dat_full <- read.csv(here("data/dat_04_04_2023.csv"))
-dat_full <- read.csv(here("data/dat_28_06_2023.csv"))
+#dat_full <- read.csv(here("data/dat_28_06_2023.csv"))
+dat_full <- read.csv(here("data/dat_19_07_2023.csv"))
 
 # add phylogenetic tree - only topologies
 # TODO? - we could get better tree from birdtree.org
@@ -462,7 +463,6 @@ bubble_plot(mod4,
 
 ```
 
-
 ### Trait type
 
 ```{r}
@@ -627,7 +627,6 @@ orchard_plot(mod6,
              xlab = "Standardised mean differnece (SMD)")
 ```
 
-
 ### Setting
 
 ```{r}
@@ -653,7 +652,6 @@ orchard_plot(mod7,
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
 ```
-
 
 ### Season
 
@@ -730,7 +728,6 @@ orchard_plot(mod9,
              xlab = "Standardised mean differnece (SMD)")
 ```
 
-
 ### Response period
 
 ```{r}
@@ -779,7 +776,6 @@ orchard_plot(mod11,
              xlab = "Standardised mean differnece (SMD)")
 
 ```
-
 
 ### Sex
 
@@ -952,7 +948,6 @@ bubble_plot(mod15,
 
 ```
 
-
 ## Meta-regression: multi-moderator (mostly)
 
 ### full models
@@ -1019,7 +1014,6 @@ mr_averaged_aic2 <- summary(model.avg(candidates, delta < 5))
 importance <- sw(candidates)
 ```
 
-
 ## Publication bias
 
 ### Funnel plot: uni-moderator
@@ -1027,7 +1021,6 @@ importance <- sw(candidates)
 ```{r}
 
 ```
-
 
 ### Funnel plot: multi-moderator
 
@@ -1074,7 +1067,6 @@ bubble_plot(mod0e,
             g = TRUE)
 ```
 
-
 ### Decline effect: uni-moderator
 
 ```{r}
@@ -1102,7 +1094,6 @@ bubble_plot(mod0d,
             g = TRUE)
 
 ```
-
 
 ### All together
 
@@ -1135,4 +1126,3 @@ dat_fulle <- qdrg(object = mod_fulle,
 #                      df = mod_fulle$ddf, 
 #                      weights = "prop")
 ```
-
