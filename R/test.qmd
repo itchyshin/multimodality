@@ -1,4 +1,5 @@
 ---
+
 title: "**Integration of multimodal cues does not alter mean but reduces variance in avian responses to predators: a systematic review and meta-analysis**"
 author: "**Kim + Shinichi et al.**"
 date: "`r Sys.Date()`"
@@ -96,42 +97,11 @@ cont_gen <- function(name) {
   return(names)
 }
 
-#' @title get_pred1: intercept-less model
-#' @description Function to get CIs (confidence intervals) and PIs (prediction intervals) from rma objects (metafor)
-#' @param model: rma.mv object 
-#' @param mod: the name of a moderator 
-get_pred1 <- function (model, mod = " ") {
-  name <- name <- firstup(as.character(stringr::str_replace(row.names(model$beta), mod, "")))
-  len <- length(name)
-  
-   if (len != 1) {
-        newdata <- matrix(NA, ncol = len, nrow = len)
-        for (i in 1:len) {
-            pos <- which(model$X[, i] == 1)[[1]]
-            newdata[, i] <- model$X[pos, ]
-        }
-        pred <- metafor::predict.rma(model, newmods = newdata)
-    }
-    else {
-        pred <- metafor::predict.rma(model)
-  }
-  estimate <- pred$pred
-  lowerCL <- pred$ci.lb
-  upperCL <- pred$ci.ub 
-  lowerPR <- pred$cr.lb
-  upperPR <- pred$cr.ub 
-  
-  table <- tibble(name = factor(name, levels = name, labels = name), estimate = estimate,
-                  lowerCL = lowerCL, upperCL = upperCL,
-                  pval = model$pval,
-                  lowerPR = lowerPR, upperPR = upperPR)
-}
-
 #' @title get_pred2: normal model
 #' @description Function to get CIs (confidence intervals) and PIs (prediction intervals) from rma objects (metafor)
 #' @param model: rma.mv object 
 #' @param mod: the name of a moderator 
-get_pred2 <- function (model, mod = " ") {
+get_pred <- function (model, mod = " ") {
   name <- as.factor(str_replace(row.names(model$beta), 
                                 paste0("relevel", "\\(", mod,", ref = name", "\\)"),
                                 ""))
@@ -254,89 +224,215 @@ dat_short_add <- dat %>% filter(Treat_mod == "AV" | Treat_mod == "V")
 dat <- dat %>%
   mutate_if(is.character, as.factor)
 
-#summary(dat)
+# reordering factors for better visualisation
+
+# dat$Treat_mod <- factor(dat$Treat_mod, levels = c("A", "V", "AV", "O", "OV", "AVO"))
 
 ```
 
-## Exploratory visualization
+## Exploratory visualization 
 
+<!-- we should add N for O, OV and AVO -->
+
+For `Treat_mod` (Treatment), we will only visualise `A`, `V`, and `AV` as `O` $r $, `OV`, and `AVO` are much rarer. But for `Type` (Trait type), we will use all data.
+
+::: {.panel-tabset}
+
+## Treatment vs. Trait types
 ```{r}
-# some data exploration
-# dat %>% group_by(Treat_mod) %>% summarise(n = n())
-# using a table to see overalps between Treat_mod and Type
-tab <- table(dat_short$Treat_mod, dat_short$Type)
-
-# visualise this table using alluvial plot?
-# https://cran.r-project.org/web/packages/alluvial/vignettes/alluvial.html
+# reordering dat_shrot$Treat_mod for better visualisation
+dat_short$Treat_mod <- factor(dat_short$Treat_mod, levels = c("A", "V", "AV"))
 
 # Treatment vs Type
 dat_short %>% group_by(Treat_mod, Type) %>%
-  summarise(n = n()) -> tab1
+  summarise(n = n()) -> tab
+
 #alluvial(tab1[,1:2], freq = tab1$n)
 
 # using ggaruvial
-ggplot(tab1,
+ggplot(tab,
        aes(y = n,
            axis1 = Treat_mod,
            axis2 = Type)) +
   geom_alluvium(aes(fill = Treat_mod)) +
   geom_stratum(alpha = 0.5) +
-  geom_text(stat = "stratum", size = 6, aes(label = after_stat(stratum))) +
+  geom_text(stat = "stratum", size = 4, aes(label = after_stat(stratum))) +
   theme(legend.position = "none") +
   theme(legend.position = "none",
         axis.text.x = element_blank()) + # remove x-axis labels
   ylab("Frequency") + 
   xlab("Treatment modality and trait type")
 
-# Type vs Sex
+```
 
-dat %>% group_by(Sex, Type) %>%
-  summarise(n = n()) -> tab2
-#alluvial(tab2[,1:2], freq = tab2$n)
+## Treatment vs. Treatment duration
+```{r}
+# tuning Treatment duration into a binary variable
+dat_short %>% mutate(TDration = case_when(duration_days < 1 ~ "< 1 day",
+                                          duration_days >= 1 ~ "> 1 day")) -> dat_short
+
+# reformatting data
+dat_short %>% group_by(Treat_mod, TDration) %>%
+  summarise(n = n()) -> tab
 
 # using ggaruvial
-ggplot(tab2,
+ggplot(tab,
        aes(y = n,
-           axis1 = Type,
-           axis2 = Sex)) +
-  geom_alluvium(aes(fill = Type)) +
+           axis1 = Treat_mod,
+           axis2 = TDration)) +
+  geom_alluvium(aes(fill = Treat_mod)) +
   geom_stratum(alpha = 0.5) +
-  geom_text(stat = "stratum", size = 6, aes(label = after_stat(stratum))) +
+  geom_text(stat = "stratum", size = 4, aes(label = after_stat(stratum))) +
   theme(legend.position = "none") +
   theme(legend.position = "none",
         axis.text.x = element_blank()) + # remove x-axis labels
   ylab("Frequency") + 
-  xlab("Trait type and sex")
+  xlab("Treatment modality and duration of treatment")
+
+```
+
+
+## Treatment vs. Sex
+
+```{r}
+ # Treat_mod vs Design
+
+dat_short %>% group_by(Treat_mod, Sex) %>%
+  summarise(n = n()) -> tab
+
+# reordering
+tab$Sex <- factor(tab$Sex, levels = c("F", "M", "both"), labels = c("Female", "Male", "Both"))
+
+# using ggaruvial
+ggplot(tab,
+       aes(y = n,
+           axis1 = Treat_mod,
+           axis2 = Sex)) +
+  geom_alluvium(aes(fill = Treat_mod)) +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 4, aes(label = after_stat(stratum))) +
+  theme(legend.position = "none") +
+  theme(legend.position = "none",
+        axis.text.x = element_blank()) + # remove x-axis labels
+  ylab("Frequency") + 
+  xlab("Treatment modality and sex")
+```
+
+## Treatment vs. Predator type
+
+```{r}
 
 # Treat_mod vs Design
+dat_short %>% filter(PredTo != "") %>%
+  group_by(Treat_mod, PredTo) %>%
+  summarise(n = n()) -> tab
 
-dat_short %>% group_by(Treat_mod, Design) %>%
-  summarise(n = n()) -> tab3
+tab$PredTo <- factor(tab$PredTo, levels = c("A", "N", "B"), labels = c("Adult", "Nestling", "Both"))
+
 #alluvial(tab1[,1:2], freq = tab1$n)
 
 # using ggaruvial
-ggplot(tab3,
+ggplot(tab,
+       aes(y = n,
+           axis1 = Treat_mod,
+           axis2 = PredTo)) +
+  geom_alluvium(aes(fill = Treat_mod)) +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 4, aes(label = after_stat(stratum))) +
+  theme(legend.position = "none") +
+  theme(legend.position = "none",
+        axis.text.x = element_blank()) + # remove x-axis labels
+  ylab("Frequency") + 
+  xlab("Treatment modality and predator type")
+```
+
+
+## Treatment vs. Design
+
+```{r}
+ # Treat_mod vs Design
+
+dat_short %>% group_by(Treat_mod, Design) %>%
+  summarise(n = n()) -> tab
+#alluvial(tab1[,1:2], freq = tab1$n)
+
+# using ggaruvial
+ggplot(tab,
        aes(y = n,
            axis1 = Treat_mod,
            axis2 = Design)) +
   geom_alluvium(aes(fill = Treat_mod)) +
   geom_stratum(alpha = 0.5) +
-  geom_text(stat = "stratum", size = 6, aes(label = after_stat(stratum))) +
+  geom_text(stat = "stratum", size = 4, aes(label = after_stat(stratum))) +
   theme(legend.position = "none") +
   theme(legend.position = "none",
         axis.text.x = element_blank()) + # remove x-axis labels
   ylab("Frequency") + 
   xlab("Treatment modality and study design")
+```
 
+## Treatment vs. Season
+
+```{r}
+ # Treat_mod vs Design
+
+dat_short %>% group_by(Treat_mod, Season) %>%
+  summarise(n = n()) -> tab
+#alluvial(tab1[,1:2], freq = tab1$n)
+
+# using ggaruvial
+ggplot(tab,
+       aes(y = n,
+           axis1 = Treat_mod,
+           axis2 = Season)) +
+  geom_alluvium(aes(fill = Treat_mod)) +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 4, aes(label = after_stat(stratum))) +
+  theme(legend.position = "none") +
+  theme(legend.position = "none",
+        axis.text.x = element_blank()) + # remove x-axis labels
+  ylab("Frequency") + 
+  xlab("Treatment modality and season")
+```
+
+
+## Treatment vs. Setting
+
+```{r}
+ # Treat_mod vs Design
+
+dat_short %>% group_by(Treat_mod, Setting) %>%
+  summarise(n = n()) -> tab
+#alluvial(tab1[,1:2], freq = tab1$n)
+
+# using ggaruvial
+ggplot(tab,
+       aes(y = n,
+           axis1 = Treat_mod,
+           axis2 = Setting)) +
+  geom_alluvium(aes(fill = Treat_mod)) +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 4, aes(label = after_stat(stratum))) +
+  theme(legend.position = "none") +
+  theme(legend.position = "none",
+        axis.text.x = element_blank()) + # remove x-axis labels
+  ylab("Frequency") + 
+  xlab("Treatment modality and study setting")
+```
+
+
+## Treatment vs Control type
+
+```{r}
 
 # Treat_mod vs ControlType
 
 dat_short %>% filter(ControlType != "mix") %>% group_by(Treat_mod, ControlType) %>%
-  summarise(n = n()) -> tab4
+  summarise(n = n()) -> tab
 #alluvial(tab1[,1:2], freq = tab1$n)
 
 # using ggaruvial
-ggplot(tab4,
+ggplot(tab,
        aes(y = n,
            axis1 = Treat_mod,
            axis2 = ControlType)) +
@@ -349,21 +445,71 @@ ggplot(tab4,
   ylab("Frequency") + 
   xlab("Treatment modality and control type")
 
-
-# TOOD - use easyalluvial to make one fig
-# other ones - easyalluvial
-#https://www.r-bloggers.com/2018/10/data-exploration-with-alluvial-plots-an-introduction-to-easyalluvial/
-# using easyalluvial and alluvial_wide
-#factor_cols <- dat %>% select_if(is.factor) %>% names()
-
-#alluvial_wide(dat_short, , max_variables = 5
-#                , fill_by = 'first_variable' ) %>%
-#  add_marginal_histograms(dat_short)
-
-# exploratory analysis
-# check each columns for missing values and other stuff
-# dat %>% map_df(~sum(is.na(.)))
 ```
+
+
+## Trait type vs. Treatment duration
+```{r}
+# Type vs duration_days
+
+# turn duration_days into a binary factor: less than 1 and more than 1
+
+dat %>% mutate(TDration = case_when(duration_days < 1 ~ "< 1 day",
+                                          duration_days >= 1 ~ "> 1 day")) -> dat
+
+
+dat %>% group_by(Type, TDration) %>%
+  summarise(n = n()) -> tab2
+
+# using ggaruvial
+ggplot(tab2,
+       aes(y = n,
+           axis1 = Type,
+           axis2 = TDration)) +
+  geom_alluvium(aes(fill = Type)) +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 4, aes(label = after_stat(stratum))) +
+  theme(legend.position = "none") +
+  theme(legend.position = "none",
+        axis.text.x = element_blank()) + # remove x-axis labels
+  ylab("Frequency") + 
+  xlab("Trait type and duration of treatment")
+
+```
+
+## Trait type vs. Sex
+```{r}
+# Type vs duration_days
+
+# turn duration_days into a binary factor: less than 1 and more than 1
+
+dat %>% mutate(TDration = case_when(duration_days < 1 ~ "< 1 day",
+                                          duration_days >= 1 ~ "> 1 day")) -> dat
+
+dat %>% group_by(Type, Sex) %>%
+  summarise(n = n()) -> tab
+
+# reordering
+tab$Sex <- factor(tab$Sex, levels = c("F", "M", "both"), labels = c("Female", "Male", "Both"))
+
+
+# using ggaruvial
+ggplot(tab,
+       aes(y = n,
+           axis1 = Type,
+           axis2 = Sex)) +
+  geom_alluvium(aes(fill = Type)) +
+  geom_stratum(alpha = 0.5) +
+  geom_text(stat = "stratum", size = 4, aes(label = after_stat(stratum))) +
+  theme(legend.position = "none") +
+  theme(legend.position = "none",
+        axis.text.x = element_blank()) + # remove x-axis labels
+  ylab("Frequency") + 
+  xlab("Trait type and sex")
+
+```
+
+:::
 
 ## Meta-analysis
 
@@ -379,12 +525,12 @@ VCV <- vcalc(vi = dat$Vd,
 
 mod0 <- rma.mv(yi = SMD,
        V = VCV, 
-       random = list(~1 | Phylo,
+       random = list(#~1 | Phylo,
                      ~1 | FocalSpL,
                      ~1 | RecNo,
                      ~1 | SubjectID, # incoprated as VCV
                      ~1 | Obs_ID),
-       R = list(Phylo = cor_tree),
+      # R = list(Phylo = cor_tree),
        test = "t",
        method = "REML", 
        sparse = TRUE,
@@ -483,8 +629,7 @@ run_rma <- function(name) {
 # results of meta-regression including all contrast results; taking the last level out ([-length(level_names)])
 mr_Treat_mod <- map(level_names[-length(level_names)], run_rma)
 
-res1 <- get_pred1(mod1, mod = "Treat_mod")
-res2 <- map(mr_Treat_mod, ~ get_pred2(.x, mod = "Treat_mod"))
+res <- map(mr_Treat_mod, ~ get_pred(.x, mod = "Treat_mod"))
 
 ```
 
@@ -718,7 +863,7 @@ orchard_plot(mod2b,
              branch.size = 3)
 ```
 
-### trait categories
+### Trait categories
 
 ```{r}
 
