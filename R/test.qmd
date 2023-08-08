@@ -183,34 +183,38 @@ all_models <- function(model, mod = " ", type = "homo") {
   
   # getting the level names out
   level_names <- levels(factor(model$data[[mod]]))
-  dat <- model$data
+  dat2 <- model$data
+
+  VCV1 <- vcalc(vi = dat2$Vd,
+             cluster = dat2$SubjectID,
+             rho = 0.5)
   #model$data[[mod]] <- factor(model$data[[mod]], ordered = FALSE)
   # meta-regression: contrasts 
   # helper function to run metafor meta-regression
   run_rma1 <- function(name) {
     rma.mv(yi = SMD, 
-         V = VCV, 
-         mods = ~ relevel(dat[[mod]], ref = name), 
+         V = VCV1, 
+         mods = ~ relevel(dat2[[mod]], ref = name), 
          random = list(~1 | FocalSpL,
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                test = "t",
                method = "REML",
                sparse = TRUE,
-               data = dat)
+               data = dat2)
    }
 
     run_rma2 <- function(name) {
     rma.mv(yi = SMD, 
-         V = VCV, 
-         mods = ~ relevel(dat[[mod]], ref = name), 
+         V = VCV1, 
+         mods = ~ relevel(dat2[[mod]], ref = name), 
          random = list(~1 | FocalSpL,
                              ~1 | RecNo,
                              ~gsub("\"", "", mod) | Obs_ID),
                test = "t",
                method = "REML",
                sparse = TRUE,
-               data = model$data)
+               data = dat2)
    }
 
   # results of meta-regression including all contrast results; taking the last level out ([-length(level_names)])
