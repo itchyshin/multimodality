@@ -56,6 +56,7 @@ library(clubSandwich)
 library(emmeans)
 library(MuMIn)
 library(kableExtra)
+library(pander)
 # making metafor talk to MuMIn
 eval(metafor:::.MuMIn)
 # install.packages("pak")
@@ -106,12 +107,10 @@ get_pred1 <- function (model, mod = " ") {
   len <- length(name)
   
    if (len != 1) {
-        newdata <- matrix(NA, ncol = len, nrow = len)
-        for (i in 1:len) {
-            pos <- which(model$X[, i] == 1)[[1]]
-            newdata[, i] <- model$X[pos, ]
-        }
-        pred <- metafor::predict.rma(model, newmods = newdata)
+        newdata <- diag(len)
+        pred <- metafor::predict.rma(model, 
+                                     newmods = newdata,
+                                     tau2.levels = 1:len)
     }
     else {
         pred <- metafor::predict.rma(model)
@@ -134,8 +133,8 @@ get_pred1 <- function (model, mod = " ") {
 #' @param mod: the name of a moderator 
 get_pred2 <- function (model, mod = " ") {
   name <- as.factor(str_replace(row.names(model$beta), 
-                                paste0("relevel", "\\(", mod,", ref = name", "\\)"),
-                                ""))
+                                paste0("relevel", "\\(", mod,", ref = name",
+                                       "\\)"),""))
   len <- length(name)
   
   if(len != 1){
@@ -184,6 +183,7 @@ all_models <- function(model, mod = " ", type = "homo") {
   # getting the level names out
   level_names <- levels(factor(model$data[[mod]]))
   dat2 <- model$data
+  mod <- mod
 
   VCV1 <- vcalc(vi = dat2$Vd,
              cluster = dat2$SubjectID,
@@ -205,12 +205,12 @@ all_models <- function(model, mod = " ", type = "homo") {
    }
 
     run_rma2 <- function(name) {
-    rma.mv(yi = SMD, 
-         V = VCV1, 
-         mods = ~ relevel(dat2[[mod]], ref = name), 
+    rma.mv(yi = SMD,
+         V = VCV1,
+         mods = ~ relevel(dat2[[mod]], ref = name),
          random = list(~1 | FocalSpL,
                              ~1 | RecNo,
-                             ~gsub("\"", "", mod) | Obs_ID),
+                             formula(paste("~", mod, "| Obs_ID"))),
                test = "t",
                method = "REML",
                sparse = TRUE,
@@ -218,11 +218,10 @@ all_models <- function(model, mod = " ", type = "homo") {
    }
 
   # results of meta-regression including all contrast results; taking the last level out ([-length(level_names)])
-
+  # this does not work for hetero model?
   if (type == "homo"){
   model_all <- map(level_names[-length(level_names)], run_rma1)
-  } 
-  else {
+  } else {
   model_all <- map(level_names[-length(level_names)], run_rma2)
   }
   
@@ -249,6 +248,7 @@ all_models <- function(model, mod = " ", type = "homo") {
 # test 
 #all_models(mod1, mod = "Treat_mod")
 #all_models(mod1s, mod = "Treat_mod")
+#all_models(mod1s2, mod = "Treat_mod")
 ```
 
 ## Preparing data set
@@ -347,7 +347,7 @@ dat_short_add <- dat %>% filter(Treat_mod == "AV" | Treat_mod == "V")
 dat <- dat %>%
   mutate_if(is.character, as.factor)
 
-# reordering factors for better visualisation
+# reordering factors for better visualization
 
 # dat$Treat_mod <- factor(dat$Treat_mod, levels = c("A", "V", "AV", "O", "OV", "AVO"))
 
@@ -633,7 +633,9 @@ ggplot(tab,
 
 ## Meta-analysis
 
-### All random effects
+::: {.panel-tabset}
+
+## All random effects (one tree)
 
 ```{r}
 ##| warning: false
@@ -643,7 +645,7 @@ VCV <- vcalc(vi = dat$Vd,
              cluster = dat$SubjectID,
              rho = 0.5)
 
-mod0 <- rma.mv(yi = SMD,
+mod_ma <- rma.mv(yi = SMD,
        V = VCV, 
        random = list(#~1 | Phylo,
                      ~1 | FocalSpL,
@@ -656,26 +658,36 @@ mod0 <- rma.mv(yi = SMD,
        sparse = TRUE,
        data = dat)
 
-summary(mod0)
+summary(mod_ma)
 
 # TODO - think about whether we add this or not
-robust(mod0, cluster = dat$SubjectID)
+robust(mod_ma, cluster = dat$SubjectID)
 
-round(i2_ml(mod0), 2)
+round(i2_ml(mod_ma), 2)
 
-orchard_plot(mod0,
+orchard_plot(mod_ma,
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
 
 ```
 
-### Reduced model
+## All random effects (100 trees)
+
+```{r}
+# TODO
+
+
+```
+
+
+
+## Reduced model
 
 ```{r}
 # reduced model
 
-mod0r <- rma.mv(yi = SMD,
+mod_ma2 <- rma.mv(yi = SMD,
        V = VCV, 
        random = list(~1 | FocalSpL,
                      ~1 | RecNo,
@@ -685,25 +697,25 @@ mod0r <- rma.mv(yi = SMD,
        sparse = TRUE,
        data = dat)
 
-summary(mod0r)
+summary(mod_ma2)
 
-round(i2_ml(mod0r), 2)
+round(i2_ml(mod_ma2), 2)
 
 # comparing two models
 #anova(mod0, mod0r)
 ```
 
-## Meta-regression: uni-moderator (mostly)
+:::
 
-### Treatmeant with all data
+## Meta-regression: uni-moderator
+
+::: {.panel-tabset}
+
+## Treatmeant with all data
 
 ```{r}
-## Treatment - A, V, AV etc 
-#dat$Phylo <- as.character(dat$Phylo)
-#match(dat$Phylo, colnames(cor_tree))
-#match(colnames(cor_tree), dat$Phylo)
 
-mod1 <- rma.mv(yi = SMD, 
+mod_trt <- rma.mv(yi = SMD, 
                V = VCV, 
                random = list(~1 | FocalSpL,
                              ~1 | RecNo,
@@ -714,32 +726,32 @@ mod1 <- rma.mv(yi = SMD,
                sparse = TRUE,
                data = dat)
 
-summary(mod1)
+summary(mod_trt)
 
-round(r2_ml(mod1)*100, 2)
+round(r2_ml(mod_trt)*100, 2)
 
-orchard_plot(mod1, 
+orchard_plot(mod_trt, 
              mod = "Treat_mod",
              group = "RecNo", 
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
 
 # result table
-all_models(mod1, mod = "Treat_mod")
+all_models(mod_trt, mod = "Treat_mod")
 ```
 
-### Treatment with Audio and Visual data
+## Treatment with Audio and Visual data
 
-#### Homoscedastic model
 
 ```{r}
+#homoscedastic model
 
 VCVs <- vcalc(vi = dat_short$Vd,
              cluster = dat_short$SubjectID,
              rho = 0.5)
 
 
-mod1s <- rma.mv(yi = SMD,
+mod_trt_1 <- rma.mv(yi = SMD,
                    V = VCVs,
                    random = list(~1|FocalSpL,
                                  ~1 | RecNo,
@@ -750,30 +762,26 @@ mod1s <- rma.mv(yi = SMD,
                    sparse = TRUE,
                    data = dat_short)
 
-summary(mod1s)
+summary(mod_trt_1)
 
-round(r2_ml(mod1s)*100, 2)
+round(r2_ml(mod_trt_1)*100, 2)
 
-orchard_plot(mod1s, 
+orchard_plot(mod_trt_1, 
              mod = "Treat_mod",
              group = "RecNo", 
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
 
-# result table
-all_models(mod1s, mod = "Treat_mod")
-```
+# result table (get all the constrasts)
+all_models(mod_trt_1, mod = "Treat_mod")
 
-#### Heteroscedastic model
-
-```{r}
 # modeling heteroscedasticity
 mod1s2 <- rma.mv(yi = SMD, 
                 V = VCVs, 
                 random = list(~1|FocalSpL , 
                               ~1 | RecNo, 
                               ~ Treat_mod | Obs_ID), 
-                mod = ~ Treat_mod, 
+                mod = ~ Treat_mod - 1, 
                 test = "t",
                 struct = "DIAG",
                 method = "REML", 
@@ -782,26 +790,29 @@ mod1s2 <- rma.mv(yi = SMD,
 
 summary(mod1s2)
 
+# result table (get all the constrasts)
+all_models(mod1s2, mod = "Treat_mod")
+
 orchard_plot(mod1s2, 
              mod = "Treat_mod",
              group = "RecNo", 
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
+
+
+# comparison models
+anova(mod1s, mod1s2) # modeling heteroscedasticity is better 
 ```
 
-
-#### Comparing models
-
-```{r}
-# comparision models
-anova(mod1s, mod1s2)
-```
-
-### Treatment with some additions
+## Treatment with some additions
 
 ```{r}
 # the effect of additions
 # this is a part of sensitivity analysis
+
+dat_short_add$Treat_add <- paste(dat_short_add$Treat_mod , 
+                                 dat_short_add$Add_on, 
+                                 sep = "-")
 
 VCVs2 <- vcalc(vi = dat_short_add$Vd,
              cluster = dat_short_add$SubjectID,
@@ -812,17 +823,17 @@ mod5 <- rma.mv(yi = SMD,
                 random = list(~1|FocalSpL , 
                               ~1 | RecNo, 
                               ~ Treat_mod | Obs_ID), 
-                mod = ~ Treat_mod*Add_on - 1,
+                mod = ~ Treat_add - 1,
                 test = "t",
                 struct = "DIAG",
                 method = "REML", 
                 sparse = TRUE,
                 data = dat_short_add)
 
-summary(mod5)
+summary(mod5) # no interaction
 ```
 
-### Treatment as an ordinal variable
+## Treatment as an ordinal variable
 
 ```{r}
 # testing the number of stimuli
@@ -848,7 +859,7 @@ bubble_plot(mod4,
 
 ```
 
-### Trait type
+## Trait type
 
 ```{r}
 # Type of responses
@@ -1012,7 +1023,7 @@ orchard_plot(mod6,
              xlab = "Standardised mean differnece (SMD)")
 ```
 
-### Setting
+## Setting
 
 ```{r}
 # Setting
@@ -1038,7 +1049,7 @@ orchard_plot(mod7,
              xlab = "Standardised mean differnece (SMD)")
 ```
 
-### Season
+## Season
 
 ```{r}
 # Season
@@ -1075,7 +1086,7 @@ orchard_plot(mod8,
              xlab = "Standardised mean differnece (SMD)")
 ```
 
-### Design
+## Design
 
 ```{r}
 # Design
@@ -1113,7 +1124,7 @@ orchard_plot(mod9,
              xlab = "Standardised mean differnece (SMD)")
 ```
 
-### Response period
+## Response period
 
 ```{r}
 # Response period
@@ -1137,7 +1148,7 @@ orchard_plot(mod10,
              xlab = "Standardised mean differnece (SMD)")
 ```
 
-### Control type
+## Control type
 
 ```{r}
 # control type
@@ -1162,7 +1173,7 @@ orchard_plot(mod11,
 
 ```
 
-### Sex
+## Sex
 
 ```{r}
 # sex
@@ -1230,7 +1241,7 @@ orchard_plot(mod12b,
 
 ```
 
-### Age
+## Age
 
 ```{r}
 # age
@@ -1254,7 +1265,7 @@ orchard_plot(mod13,
              xlab = "Standardised mean differnece (SMD)")
 ```
 
-### Predactor type
+## Predactor type
 
 ```{r}
 # type of predator
@@ -1281,7 +1292,7 @@ orchard_plot(mod14,
 
 ```
 
-### Treatment duration
+## Treatment duration
 
 ```{r}
 
@@ -1333,9 +1344,11 @@ bubble_plot(mod15,
 
 ```
 
-## Meta-regression: multi-moderator (mostly)
 
-### full models
+:::
+
+## Meta-regression: multi-moderator
+
 
 ```{r}
 #######################
@@ -1401,13 +1414,15 @@ importance <- sw(candidates)
 
 ## Publication bias
 
-### Funnel plot: uni-moderator
+::: {.panel-tabset}
+
+## Funnel plot: uni-moderator
 
 ```{r}
 
 ```
 
-### Funnel plot: multi-moderator
+## Funnel plot: multi-moderator
 
 ```{r}
 funnel(mod0r, 
@@ -1421,7 +1436,7 @@ funnel(mod_full,
        type = "rstudent")
 ```
 
-### Egger regression: uni-moderator
+## Egger regression: uni-moderator
 
 ```{r}
 # Egger
@@ -1452,7 +1467,7 @@ bubble_plot(mod0e,
             g = TRUE)
 ```
 
-### Decline effect: uni-moderator
+## Decline effect: uni-moderator
 
 ```{r}
 # decline effect
@@ -1480,7 +1495,7 @@ bubble_plot(mod0d,
 
 ```
 
-### All together
+## All together
 
 ```{r}
 # full model
@@ -1511,3 +1526,42 @@ dat_fulle <- qdrg(object = mod_fulle,
 #                      df = mod_fulle$ddf, 
 #                      weights = "prop")
 ```
+
+:::
+
+## Figure gallery
+
+::: {.panel-tabset}
+
+## Figure X
+
+```{r}
+
+```
+
+
+## Figure XX
+
+```{r}
+
+```
+
+
+## Figure XXX
+
+```{r}
+
+```
+
+
+:::
+
+## R Session Informtion
+
+```{r}
+# pander for making it look nicer
+sessionInfo() %>% pander()
+```
+
+
+
