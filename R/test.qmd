@@ -776,7 +776,7 @@ orchard_plot(mod_trt_1,
 all_models(mod_trt_1, mod = "Treat_mod")
 
 # modeling heteroscedasticity
-mod1s2 <- rma.mv(yi = SMD, 
+mod_trt_2 <- rma.mv(yi = SMD, 
                 V = VCVs, 
                 random = list(~1|FocalSpL , 
                               ~1 | RecNo, 
@@ -788,41 +788,41 @@ mod1s2 <- rma.mv(yi = SMD,
                 sparse = TRUE,
                 data = dat_short)
 
-summary(mod1s2)
+summary(mod_trt_2)
 
-# result table (get all the constrasts)
-all_models(mod1s2, mod = "Treat_mod")
-
-orchard_plot(mod1s2, 
+orchard_plot(mod_trt_2, 
              mod = "Treat_mod",
              group = "RecNo", 
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
 
 
+# result table (get all the constrasts)
+all_models(mod_trt_2, mod = "Treat_mod")
+
 # comparison models
-anova(mod1s, mod1s2) # modeling heteroscedasticity is better 
+anova(mod_trt_1, mod_trt_2) # modeling heteroscedasticity is better 
 ```
 
-## Treatment with some additions
+## Treatment with additions
 
 ```{r}
 # the effect of additions
 # this is a part of sensitivity analysis
 
-dat_short_add$Treat_add <- paste(dat_short_add$Treat_mod , 
+dat_short_add$Treat_add <- as.factor(paste(dat_short_add$Treat_mod , 
                                  dat_short_add$Add_on, 
-                                 sep = "-")
+                                 sep = "-"))
 
 VCVs2 <- vcalc(vi = dat_short_add$Vd,
              cluster = dat_short_add$SubjectID,
              rho = 0.5)
 
-mod5 <- rma.mv(yi = SMD, 
+mod_add <- rma.mv(yi = SMD, 
                 V = VCVs2, 
                 random = list(~1|FocalSpL , 
                               ~1 | RecNo, 
-                              ~ Treat_mod | Obs_ID), 
+                              ~ 1 | Obs_ID), 
                 mod = ~ Treat_add - 1,
                 test = "t",
                 struct = "DIAG",
@@ -830,7 +830,16 @@ mod5 <- rma.mv(yi = SMD,
                 sparse = TRUE,
                 data = dat_short_add)
 
-summary(mod5) # no interaction
+summary(mod_add) 
+
+orchard_plot(mod_add, 
+             mod = "Treat_add",
+             group = "RecNo", 
+             xlab = "Standardised mean differnece (SMD)",
+             branch.size = 3)
+
+# result table (get all the constrasts)
+all_models(mod_add, mod = "Treat_add")
 ```
 
 ## Treatment as an ordinal variable
@@ -838,7 +847,7 @@ summary(mod5) # no interaction
 ```{r}
 # testing the number of stimuli
 
-mod4 <- rma.mv(yi = SMD, 
+mod_ord <- rma.mv(yi = SMD, 
                V = VCV, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo, 
@@ -849,9 +858,9 @@ mod4 <- rma.mv(yi = SMD,
                sparse = TRUE,
                data = dat)
 
-summary(mod4)
+summary(mod_ord)
 
-bubble_plot(mod4,
+bubble_plot(mod_ord,
              mod = "Treat_No",
              group = "RecNo",
              xlab = "The number of simuli",
@@ -862,8 +871,9 @@ bubble_plot(mod4,
 ## Trait type
 
 ```{r}
-# Type of responses
-mod2 <- rma.mv(yi = SMD, 
+#homoscedastic model
+# Type of responses 
+mod_type1 <- rma.mv(yi = SMD, 
                V = VCV, 
                random = list(~1 | FocalSpL,
                              ~1 | RecNo,
@@ -874,44 +884,21 @@ mod2 <- rma.mv(yi = SMD,
                sparse = TRUE,
                data = dat)
 
-summary(mod2)
+summary(mod_type1)
 
-mod2c <- rma.mv(yi = SMD, 
-               V = VCV, 
-               random = list(~1|FocalSpL,
-                             ~1 | RecNo,
-                             ~1 | Obs_ID),
-               mod = ~ Type,
-               test = "t",
-               method = "REML",
-               sparse = TRUE,
-               data = dat)
+round(r2_ml(mod_type1)*100, 2)
 
-summary(mod2c)
-
-mod2d <- rma.mv(yi = SMD,
-               V = VCV,
-               random = list(~1|FocalSpL,
-                             ~1 | RecNo,
-                             ~1 | Obs_ID),
-               mod = ~ relevel(Type, ref = "LifeHistory"),
-               test = "t",
-               method = "REML",
-               sparse = TRUE,
-               data = dat)
-
-summary(mod2d)
-
-orchard_plot(mod2,
+orchard_plot(mod_type1,
              mod = "Type",
              group = "RecNo", 
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
 
-round(r2_ml(mod2)*100, 2)
+# result table
+all_models(mod_type1, mod = "Type")
 
 # heteroscadasticity model
-mod2b <- rma.mv(yi = SMD, 
+mod_type2 <- rma.mv(yi = SMD, 
                V = VCV, 
                mod = ~ Type - 1, 
                random = list(~1|FocalSpL , 
@@ -923,57 +910,31 @@ mod2b <- rma.mv(yi = SMD,
                sparse = TRUE,
                data = dat)
 
-summary(mod2b)
-
-
-# make other hetero
-mod2e <- rma.mv(yi = SMD,
-               V = VCV,
-               mod = ~ Type, 
-               random = list(~1|FocalSpL , 
-                             ~1 | RecNo, 
-                             ~Type | Obs_ID), 
-               struct = "DIAG",
-               test = "t",
-               method = "REML", 
-               sparse = TRUE,
-               data = dat)
-
-summary(mod2e)
-
-mod2f <- rma.mv(yi = SMD,
-               V = VCV,
-               mod = ~ relevel(Type, ref = "LifeHistory"), 
-               random = list(~1|FocalSpL , 
-                             ~1 | RecNo, 
-                             ~Type | Obs_ID), 
-               struct = "DIAG",
-               test = "t",
-               method = "REML", 
-               sparse = TRUE,
-               data = dat)
-
-summary(mod2f)
-
-# heteroscadasticity model better than the homoscedasticity model
-# note LifeHistory has lowest variation but this may be expected? 
-# as it is less flexiable (e.g. the number of eggs?)
-anova(mod2, mod2b)
+summary(mod_type2)
 
 orchard_plot(mod2b, 
              mod = "Type",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
+
+
+# result table
+all_models(mod_type2, mod = "Type")
+
+# heteroscadasticity model better than the homoscedasticity model
+# note LifeHistory has lowest variation but this may be expected? 
+# as it is less flexiable (e.g. the number of eggs?)
+anova(mod_type1, mod_type2)
 ```
 
 ### Trait categories
 
 ```{r}
-
 # Category of responses
 
-mod3 <- rma.mv(yi = SMD, 
+
+mod_cat <- rma.mv(yi = SMD, 
                V = VCV, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo, 
@@ -984,11 +945,14 @@ mod3 <- rma.mv(yi = SMD,
                sparse = TRUE,
                data = dat)
 
-summary(mod3)
+summary(mod_cat)
 
-round(r2_ml(mod3)*100, 2)
+round(r2_ml(mod_cat)*100, 2)
 
-orchard_plot(mod3, 
+# result table
+all_models(mod_cat, mod = "Category")
+
+orchard_plot(mod_cat, 
              mod = "Category",
              group = "RecNo", 
              xlab = "Standardised mean differnece (SMD)",
@@ -999,10 +963,11 @@ orchard_plot(mod3,
 ### Predactor guild
 
 ```{r}
-# Predactor guild
-# quite heterogeneous
-# TODO this could be in random effects - think abou thtis a bit later
-mod6 <- rma.mv(yi = SMD, 
+# Redactor guild
+# TODO Mammal only N = 1 so remove and also remove NS (not specificed)
+
+
+mod_preg <- rma.mv(yi = SMD, 
                V = VCV, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
@@ -1013,11 +978,11 @@ mod6 <- rma.mv(yi = SMD,
                sparse = TRUE,
                data = dat)
 
-summary(mod6)
+summary(mod_preg)
 
-round(r2_ml(mod6)*100, 2)
+round(r2_ml(mod_preg)*100, 2)
 
-orchard_plot(mod6, 
+orchard_plot(mod_preg, 
              mod = "PredGuild",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
