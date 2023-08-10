@@ -949,8 +949,6 @@ summary(mod_cat)
 
 round(r2_ml(mod_cat)*100, 2)
 
-# result table
-all_models(mod_cat, mod = "Category")
 
 orchard_plot(mod_cat, 
              mod = "Category",
@@ -958,17 +956,26 @@ orchard_plot(mod_cat,
              xlab = "Standardised mean differnece (SMD)",
              angle = 45,
              branch.size = 3)
+
+# result table
+all_models(mod_cat, mod = "Category")
 ```
 
 ### Predactor guild
 
 ```{r}
 # Redactor guild
-# TODO Mammal only N = 1 so remove and also remove NS (not specificed)
+# Fish only N = 1 so remove and also remove NS (not specified)
 
+dat %>% filter(PredGuild != "Fish" & PredGuild != "NS") ->
+  data_preg
+
+VCVs3 <- vcalc(vi = data_preg$Vd,
+             cluster = data_preg$SubjectID,
+             rho = 0.5)
 
 mod_preg <- rma.mv(yi = SMD, 
-               V = VCV, 
+               V = VCVs3, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
@@ -976,16 +983,22 @@ mod_preg <- rma.mv(yi = SMD,
                test = "t",
                method = "REML",
                sparse = TRUE,
-               data = dat)
+               data = data_preg)
 
 summary(mod_preg)
 
 round(r2_ml(mod_preg)*100, 2)
+# R2_marginal R2_conditional 
+#           1.70          19.62 
 
 orchard_plot(mod_preg, 
              mod = "PredGuild",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
+
+# result table
+all_models(mod_preg, mod = "PredGuild")
+
 ```
 
 ## Setting
@@ -993,7 +1006,7 @@ orchard_plot(mod_preg,
 ```{r}
 # Setting
 
-mod7 <- rma.mv(yi = SMD, 
+mod_set <- rma.mv(yi = SMD, 
                V = VCV, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
@@ -1004,22 +1017,26 @@ mod7 <- rma.mv(yi = SMD,
                sparse = TRUE,
                data = dat)
 
-summary(mod7)
+summary(mod_set)
 
-round(r2_ml(mod7)*100, 2)
+round(r2_ml(mod_set)*100, 2)
+# R2_marginal R2_conditional 
+#           0.70          18.98 
 
-orchard_plot(mod7, 
+orchard_plot(mod_set, 
              mod = "Setting",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
+
+# result table
+all_models(mod_set, mod = "Setting")
 ```
 
 ## Season
 
 ```{r}
 # Season
-
-mod8 <- rma.mv(yi = SMD, 
+mod_4 <- rma.mv(yi = SMD, 
                V = VCV, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
@@ -1030,32 +1047,26 @@ mod8 <- rma.mv(yi = SMD,
                sparse = TRUE,
                data = dat)
 
-mod8b <- rma.mv(yi = SMD, 
-               V = VCV, 
-               random = list(~1|FocalSpL , 
-                             ~1 | RecNo,
-                             ~1 | Obs_ID),
-               mods =  ~ Season,
-               test = "t",
-               method = "REML",
-               sparse = TRUE,
-               data = dat)
 
-summary(mod8b)
+summary(mod_4)
 
-round(r2_ml(mod8)*100, 2)
+round(r2_ml(mod_4)*100, 2)
 
-orchard_plot(mod8,
+orchard_plot(mod_4,
              mod = "Season",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
+
+
+# result table
+all_models(mod_4, mod = "Season")
 ```
 
 ## Design
 
 ```{r}
 # Design
-mod9 <- rma.mv(yi = SMD, 
+mod_d <- rma.mv(yi = SMD, 
                V = VCV, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
@@ -1065,35 +1076,26 @@ mod9 <- rma.mv(yi = SMD,
                method = "REML",
                sparse = TRUE,
                data = dat)
-summary(mod9)
+summary(mod_d)
 
+round(r2_ml(mod_d)*100, 2)
+ # R2_marginal R2_conditional 
+ #          0.01          18.72 
 
-mod9b <- rma.mv(yi = SMD, 
-               V = VCV, 
-               random = list(~1|FocalSpL , 
-                             ~1 | RecNo,
-                             ~1 | Obs_ID),
-               mods =  ~ Design,
-               test = "t",
-               method = "REML",
-               sparse = TRUE,
-               data = dat)
-
-summary(mod9b)
-
-round(r2_ml(mod9)*100, 2)
-
-orchard_plot(mod9,
+orchard_plot(mod_d,
              mod = "Design",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
+
+# result table
+all_models(mod_d, mod = "Design")
 ```
 
 ## Response period
 
 ```{r}
 # Response period
-mod10 <- rma.mv(yi = SMD, 
+mod_resp <- rma.mv(yi = SMD, 
                V = VCV, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
@@ -1103,22 +1105,37 @@ mod10 <- rma.mv(yi = SMD,
                method = "REML",
                sparse = TRUE,
                data = dat)
-summary(mod10)
+summary(mod_resp)
 
-round(r2_ml(mod10)*100, 2)
+round(r2_ml(mod_resp)*100, 2)
+#   R2_marginal R2_conditional 
+#          0.61          19.10 
 
-orchard_plot(mod10,
+
+orchard_plot(mod_resp,
              mod = "ResponsePeriod",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
+
+# result table
+all_models(mod_resp, mod = "ResponsePeriod")
 ```
 
 ## Control type
 
 ```{r}
 # control type
-mod11 <- rma.mv(yi = SMD, 
-               V = VCV, 
+# Mix only N = 1 so remove 
+
+dat %>% filter(ControlType != "mix") ->
+  data_cont
+
+VCVs4 <- vcalc(vi = data_cont$Vd,
+             cluster = data_cont$SubjectID,
+             rho = 0.5)
+
+mod_cont <- rma.mv(yi = SMD, 
+               V = VCVs4, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
@@ -1126,15 +1143,20 @@ mod11 <- rma.mv(yi = SMD,
                test = "t",
                method = "REML",
                sparse = TRUE,
-               data = dat)
-summary(mod11)
+               data = data_cont)
+summary(mod_cont)
 
-round(r2_ml(mod11)*100, 2)
+round(r2_ml(mod_cont)*100, 2)
+# R2_marginal R2_conditional 
+#           0.07          18.73 
 
-orchard_plot(mod11,
+orchard_plot(mod_cont,
              mod = "ControlType",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
+
+# result table
+all_models(mod_cont, mod = "ControlType")
 
 ```
 
@@ -1142,9 +1164,8 @@ orchard_plot(mod11,
 
 ```{r}
 # sex
-# TODO - this could be interesting
-# what is in males and females
-mod12 <- rma.mv(yi = SMD, 
+
+mod_sex1 <- rma.mv(yi = SMD, 
                V = VCV, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
@@ -1154,38 +1175,23 @@ mod12 <- rma.mv(yi = SMD,
                method = "REML",
                sparse = TRUE,
                data = dat)
-summary(mod12)
+summary(mod_sex1)
 
-round(r2_ml(mod12)*100, 2)
+round(r2_ml(mod_sex1)*100, 2)
 
-orchard_plot(mod12,
+orchard_plot(mod_sex1,
              mod = "Sex",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
 
-# shoter data for just males and females
-# hetero but no sex effect here
-dat_sex <- dat %>% filter(Sex != "both")
+# result table
+all_models(mod_sex1, mod = "Sex")
 
-VCV3 <- vcalc(vi = dat_sex$Vd,
-             cluster = dat_sex$SubjectID,
-             rho = 0.5)
+# heteroscedasticity
 
-mod12a <- rma.mv(yi = SMD, 
-                 V = VCV3, 
-                 mod = ~ Sex, 
-                 random = list(~1|FocalSpL , 
-                               ~1 | RecNo, 
-                               ~1 | Obs_ID), 
-                 #struct = "DIAG",
-                 test = "t",
-                 method = "REML", 
-                 sparse = TRUE,
-                 data = dat_sex)
-
-mod12b <- rma.mv(yi = SMD, 
-                V = VCV3, 
-                mod = ~ Sex, 
+mod_sex2 <- rma.mv(yi = SMD, 
+                V = VCV, 
+                mod = ~ Sex - 1, 
                 random = list(~1|FocalSpL , 
                               ~1 | RecNo, 
                               ~Sex | Obs_ID), 
@@ -1193,16 +1199,40 @@ mod12b <- rma.mv(yi = SMD,
                 test = "t",
                 method = "REML", 
                 sparse = TRUE,
-                data = dat_sex)
+                data = dat)
 
-summary(mod12b)
+summary(mod_sex2)
 
-anova(mod12a, mod12b)
 
-orchard_plot(mod12b,
+orchard_plot(mod_sex2,
              mod = "Sex",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
+
+# result table
+all_models(mod_sex2, mod = "Sex", type = "hetero")
+
+
+anova(mod_sex1, mod_sex2)
+
+# # hetero but no sex effect here
+# dat_sex <- dat %>% filter(Sex != "both")
+# 
+# VCV3 <- vcalc(vi = dat_sex$Vd,
+#              cluster = dat_sex$SubjectID,
+#              rho = 0.5)
+# 
+# mod12a <- rma.mv(yi = SMD, 
+#                  V = VCV3, 
+#                  mod = ~ Sex, 
+#                  random = list(~1|FocalSpL , 
+#                                ~1 | RecNo, 
+#                                ~1 | Obs_ID), 
+#                  #struct = "DIAG",
+#                  test = "t",
+#                  method = "REML", 
+#                  sparse = TRUE,
+#                  data = dat_sex)
 
 ```
 
@@ -1210,8 +1240,21 @@ orchard_plot(mod12b,
 
 ```{r}
 # age
-mod13 <- rma.mv(yi = SMD, 
-               V = VCV, 
+#A = Adult, N = Nestling, J = Juveniles (including fledglings and first year birds), E = Egg
+
+# "" only N = 2 (study = 1) so remove 
+
+dat %>% filter(Age != "") ->
+  dat_age
+
+VCVs5 <- vcalc(vi = dat_age$Vd,
+             cluster = dat_age$SubjectID,
+             rho = 0.5)
+
+
+# age
+mod1_age <- rma.mv(yi = SMD, 
+               V = VCVs5, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
@@ -1219,15 +1262,20 @@ mod13 <- rma.mv(yi = SMD,
                test = "t",
                method = "REML",
                sparse = TRUE,
-               data = dat)
-summary(mod13)
+               data = dat_age)
+summary(mod1_age)
 
-round(r2_ml(mod13)*100, 2)
+round(r2_ml(mod1_age)*100, 2)
+   # R2_marginal R2_conditional 
+   #        0.15          18.74 
 
-orchard_plot(mod13,
+orchard_plot(mod1_age,
              mod = "Age",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
+
+# result table
+all_models(mod1_age, mod = "Age")
 ```
 
 ## Predactor type
@@ -1236,7 +1284,10 @@ orchard_plot(mod13,
 # type of predator
 
 dat$PredTo[dat$PredTo == ""] <- NA
-mod14 <- rma.mv(yi = SMD, 
+
+
+
+mod_predt <- rma.mv(yi = SMD, 
                V = VCV, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
@@ -1246,14 +1297,20 @@ mod14 <- rma.mv(yi = SMD,
                method = "REML",
                sparse = TRUE,
                data = dat)
-summary(mod14)
+summary(mod_predt)
 
-round(r2_ml(mod14)*100, 2)
+round(r2_ml(mod_predt)*100, 2)
+# R2_marginal R2_conditional 
+#           0.25          18.97 
 
-orchard_plot(mod14,
+
+orchard_plot(mod_predt,
              mod = "PredTo",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
+
+# result table
+all_models(mod_predt, mod = "PredTo")
 
 ```
 
@@ -1265,7 +1322,7 @@ orchard_plot(mod14,
 
 dat$ln_duration <- log(dat$duration_days)
 
-mod15 <- rma.mv(yi = SMD,
+mod_dur <- rma.mv(yi = SMD,
                V = VCV,
                random = list(~1|FocalSpL,
                              ~1 | RecNo,
@@ -1275,19 +1332,8 @@ mod15 <- rma.mv(yi = SMD,
                method = "REML",
                sparse = TRUE,
                data = dat)
-summary(mod15)
+summary(mod_dur)
 
-mod16 <- rma.mv(yi = SMD,
-               V = VCV,
-               random = list(~1|FocalSpL,
-                             ~1 | RecNo,
-                             ~1 | Obs_ID),
-               mods =  ~ ln_duration*Type,
-               test = "t",
-               method = "REML",
-               sparse = TRUE,
-               data = dat)
-summary(mod16)
 
 round(r2_ml(mod15)*100, 2)
 
@@ -1301,11 +1347,27 @@ bubble_plot(mod15,
     color = Type,
     fill = Type,
     size = 1/sqrt(Vd)), alpha = 0.6) +
-    scale_color_discrete() + #+ # how to put the legend for colour
+    scale_color_discrete() + 
     guides(color = "legend")
 
 #p + geom_point(aes(colour = Type))
 #scale_colour_manual(values = c("red", "blue", "green"))
+
+# extra 
+
+
+mod16 <- rma.mv(yi = SMD,
+               V = VCV,
+               random = list(~1|FocalSpL,
+                             ~1 | RecNo,
+                             ~1 | Obs_ID),
+               mods =  ~ ln_duration*Type,
+               test = "t",
+               method = "REML",
+               sparse = TRUE,
+               data = dat)
+summary(mod16)
+
 
 ```
 
