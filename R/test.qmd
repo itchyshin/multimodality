@@ -36,31 +36,49 @@ execute:
 ## Setting up
 
 ```{r}
-#install.packages("pacman")
-#pacman::p_load(devtools, tidyverse, metafor, patchwork, R.rsp, emmeans)
+# install.packages("pacman")
+# pacman::p_load(devtools, tidyverse, metafor, patchwork, R.rsp, emmeans)
 
-#devtools::install_github("daniel1noble/orchaRd", force = TRUE)
+# devtools::install_github("daniel1noble/orchaRd", force = TRUE)
+library(pacman)
 
-library(tidyverse)
-library(here)
-library(lme4)
-library(orchaRd)
-#library(gptstudio)
-library(metafor)
-library(patchwork)
-library(alluvial)
-library(ggalluvial)
-library(easyalluvial)
-library(ape)
-library(clubSandwich)
-library(emmeans)
-library(MuMIn)
-library(kableExtra)
-library(pander)
+p_load(
+    tidyverse,
+    here,
+    lme4,
+    orchaRd,
+    metafor,
+    patchwork,
+    alluvial,
+    ggalluvial,
+    ape,
+    easyalluvial,
+    clubSandwich,
+    emmeans,
+    MuMIn,
+    kableExtra,
+    pander
+)
+
+# library(tidyverse)
+# library(here)
+# library(lme4)
+# library(orchaRd)
+# library(metafor)
+# library(patchwork)
+# library(alluvial)
+# library(ggalluvial)
+# library(easyalluvial)
+# library(ape)
+# library(clubSandwich)
+# library(emmeans)
+# library(MuMIn)
+# library(kableExtra)
+# library(pander)
 # making metafor talk to MuMIn
 eval(metafor:::.MuMIn)
 # install.packages("pak")
-#pak::pak("MichelNivard/gptstudio")
+# pak::pak("MichelNivard/gptstudio")
 ```
 
 ## Getting data loaded
@@ -928,7 +946,129 @@ all_models(mod_type2, mod = "Type")
 anova(mod_type1, mod_type2)
 ```
 
-### Trait categories
+
+## Treatment duration
+
+```{r}
+
+# treatment duration
+
+dat$ln_duration <- log(dat$duration_days)
+
+mod_dur <- rma.mv(yi = SMD,
+               V = VCV,
+               random = list(~1|FocalSpL,
+                             ~1 | RecNo,
+                             ~1 | Obs_ID),
+               mods =  ~ ln_duration,
+               test = "t",
+               method = "REML",
+               sparse = TRUE,
+               data = dat)
+summary(mod_dur)
+
+
+round(r2_ml(mod_dur)*100, 2)
+
+bubble_plot(mod_dur,
+             mod = "ln_duration",
+             group = "RecNo",
+             xlab = "log(duration in days)",
+             g = TRUE) +
+    geom_point(data = dat,
+    aes(x = ln_duration, y = SMD,
+    color = Type,
+    fill = Type,
+    size = 1/sqrt(Vd)), alpha = 0.6) +
+    scale_color_discrete() + 
+    guides(color = "legend")
+
+#p + geom_point(aes(colour = Type))
+#scale_colour_manual(values = c("red", "blue", "green"))
+
+# extra  - looking at the interaction
+mod_dur_int <- rma.mv(yi = SMD,
+               V = VCV,
+               random = list(~1|FocalSpL,
+                             ~1 | RecNo,
+                             ~1 | Obs_ID),
+               mods =  ~ ln_duration*Type,
+               test = "t",
+               method = "REML",
+               sparse = TRUE,
+               data = dat)
+
+# no significant interaction
+summary(mod_dur_int)
+
+res<-mod_results(mod_dur_int, mod = "ln_duration", group = "RecNo", by = "Type")
+
+bubble_plot(res,
+             mod = "ln_duration",
+             group = "RecNo",
+             xlab = "log(duration in days)",
+             condition.nrow = 3,
+             g = TRUE) 
+```
+
+## Sex
+
+```{r}
+# sex
+
+mod_sex1 <- rma.mv(yi = SMD, 
+               V = VCV, 
+               random = list(~1|FocalSpL , 
+                             ~1 | RecNo,
+                             ~1 | Obs_ID),
+               mods =  ~ Sex - 1,
+               test = "t",
+               method = "REML",
+               sparse = TRUE,
+               data = dat)
+summary(mod_sex1)
+
+round(r2_ml(mod_sex1)*100, 2)
+
+orchard_plot(mod_sex1,
+             mod = "Sex",
+             group = "RecNo",
+             xlab = "Standardised mean differnece (SMD)")
+
+# result table
+all_models(mod_sex1, mod = "Sex")
+
+# heteroscedasticity
+
+mod_sex2 <- rma.mv(yi = SMD, 
+                V = VCV, 
+                mod = ~ Sex - 1, 
+                random = list(~1|FocalSpL , 
+                              ~1 | RecNo, 
+                              ~Sex | Obs_ID), 
+                struct = "DIAG",
+                test = "t",
+                method = "REML", 
+                sparse = TRUE,
+                data = dat)
+
+summary(mod_sex2)
+
+
+orchard_plot(mod_sex2,
+             mod = "Sex",
+             group = "RecNo",
+             xlab = "Standardised mean differnece (SMD)")
+
+# result table
+all_models(mod_sex2, mod = "Sex", type = "hetero")
+
+
+anova(mod_sex1, mod_sex2)
+```
+
+
+## Trait categories
 
 ```{r}
 # Category of responses
@@ -961,7 +1101,7 @@ orchard_plot(mod_cat,
 all_models(mod_cat, mod = "Category")
 ```
 
-### Predactor guild
+## Predactor guild
 
 ```{r}
 # Redactor guild
@@ -1160,81 +1300,6 @@ all_models(mod_cont, mod = "ControlType")
 
 ```
 
-## Sex
-
-```{r}
-# sex
-
-mod_sex1 <- rma.mv(yi = SMD, 
-               V = VCV, 
-               random = list(~1|FocalSpL , 
-                             ~1 | RecNo,
-                             ~1 | Obs_ID),
-               mods =  ~ Sex - 1,
-               test = "t",
-               method = "REML",
-               sparse = TRUE,
-               data = dat)
-summary(mod_sex1)
-
-round(r2_ml(mod_sex1)*100, 2)
-
-orchard_plot(mod_sex1,
-             mod = "Sex",
-             group = "RecNo",
-             xlab = "Standardised mean differnece (SMD)")
-
-# result table
-all_models(mod_sex1, mod = "Sex")
-
-# heteroscedasticity
-
-mod_sex2 <- rma.mv(yi = SMD, 
-                V = VCV, 
-                mod = ~ Sex - 1, 
-                random = list(~1|FocalSpL , 
-                              ~1 | RecNo, 
-                              ~Sex | Obs_ID), 
-                struct = "DIAG",
-                test = "t",
-                method = "REML", 
-                sparse = TRUE,
-                data = dat)
-
-summary(mod_sex2)
-
-
-orchard_plot(mod_sex2,
-             mod = "Sex",
-             group = "RecNo",
-             xlab = "Standardised mean differnece (SMD)")
-
-# result table
-all_models(mod_sex2, mod = "Sex", type = "hetero")
-
-
-anova(mod_sex1, mod_sex2)
-
-# # hetero but no sex effect here
-# dat_sex <- dat %>% filter(Sex != "both")
-# 
-# VCV3 <- vcalc(vi = dat_sex$Vd,
-#              cluster = dat_sex$SubjectID,
-#              rho = 0.5)
-# 
-# mod12a <- rma.mv(yi = SMD, 
-#                  V = VCV3, 
-#                  mod = ~ Sex, 
-#                  random = list(~1|FocalSpL , 
-#                                ~1 | RecNo, 
-#                                ~1 | Obs_ID), 
-#                  #struct = "DIAG",
-#                  test = "t",
-#                  method = "REML", 
-#                  sparse = TRUE,
-#                  data = dat_sex)
-
-```
 
 ## Age
 
@@ -1253,7 +1318,7 @@ VCVs5 <- vcalc(vi = dat_age$Vd,
 
 
 # age
-mod1_age <- rma.mv(yi = SMD, 
+mod_age <- rma.mv(yi = SMD, 
                V = VCVs5, 
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
@@ -1263,19 +1328,19 @@ mod1_age <- rma.mv(yi = SMD,
                method = "REML",
                sparse = TRUE,
                data = dat_age)
-summary(mod1_age)
+summary(mod_age)
 
-round(r2_ml(mod1_age)*100, 2)
+round(r2_ml(mod_age)*100, 2)
    # R2_marginal R2_conditional 
    #        0.15          18.74 
 
-orchard_plot(mod1_age,
+orchard_plot(mod_age,
              mod = "Age",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)")
 
 # result table
-all_models(mod1_age, mod = "Age")
+all_models(mod_age, mod = "Age")
 ```
 
 ## Predactor type
@@ -1314,63 +1379,6 @@ all_models(mod_predt, mod = "PredTo")
 
 ```
 
-## Treatment duration
-
-```{r}
-
-# treatment duration
-
-dat$ln_duration <- log(dat$duration_days)
-
-mod_dur <- rma.mv(yi = SMD,
-               V = VCV,
-               random = list(~1|FocalSpL,
-                             ~1 | RecNo,
-                             ~1 | Obs_ID),
-               mods =  ~ ln_duration,
-               test = "t",
-               method = "REML",
-               sparse = TRUE,
-               data = dat)
-summary(mod_dur)
-
-
-round(r2_ml(mod15)*100, 2)
-
-bubble_plot(mod15,
-             mod = "ln_duration",
-             group = "RecNo",
-             xlab = "log(duration in days)",
-             g = TRUE) +
-    geom_point(data = dat,
-    aes(x = ln_duration, y = SMD,
-    color = Type,
-    fill = Type,
-    size = 1/sqrt(Vd)), alpha = 0.6) +
-    scale_color_discrete() + 
-    guides(color = "legend")
-
-#p + geom_point(aes(colour = Type))
-#scale_colour_manual(values = c("red", "blue", "green"))
-
-# extra 
-
-
-mod16 <- rma.mv(yi = SMD,
-               V = VCV,
-               random = list(~1|FocalSpL,
-                             ~1 | RecNo,
-                             ~1 | Obs_ID),
-               mods =  ~ ln_duration*Type,
-               test = "t",
-               method = "REML",
-               sparse = TRUE,
-               data = dat)
-summary(mod16)
-
-
-```
-
 
 :::
 
@@ -1389,8 +1397,7 @@ mod_full <- rma.mv(yi = SMD,
                random = list(~1|FocalSpL , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
-               mods =  ~ #Design +
-                         sln_duration*Type +
+               mods =  ~ sln_duration*Type +
                          sln_duration*Treat_mod +
                          Sex,
                test = "t",
@@ -1416,14 +1423,14 @@ orchard_plot(mod_full,
 int_type <- mod_results(mod_full, mod = "sln_duration", group = "RecNo", weights = "prop",
                                    by = "Type")
 
-bubble_plot(int_type, group = "RecNo", mod = "sln_duration", xlab = "ln(duration in days)",
-                     legend.pos = "top.left", condition.nrow = 3)
+bubble_plot(int_type, group = "RecNo", mod = "sln_duration", xlab = "ln(duration in days) (z-transformed)",
+                     legend.pos = "top.left", condition.nrow = 3, g = TRUE)
 
 int_trt <- mod_results(mod_full, mod = "sln_duration", group = "RecNo", weights = "prop",
                         by = "Treat_mod")
 
 bubble_plot(int_trt, group = "RecNo", mod = "sln_duration", xlab = "ln(duration in days)",
-            legend.pos = "top.left", condition.nrow = 3)
+            legend.pos = "top.left", condition.nrow = 3, g = TRUE)
 ```
 
 ```{r}
@@ -1446,21 +1453,18 @@ importance <- sw(candidates)
 ## Funnel plot: uni-moderator
 
 ```{r}
-
-```
-
-## Funnel plot: multi-moderator
-
-```{r}
-funnel(mod0r, 
+funnel(mod_ma2, 
        yaxis="seinv",
-       type = "rstudent")
+       type = "rstudent"
+       )
 ```
+## Funnel plot: multi-moderator
 
 ```{r}
 funnel(mod_full, 
        yaxis="seinv",
-       type = "rstudent")
+       type = "rstudent"
+       )
 ```
 
 ## Egger regression: uni-moderator
@@ -1471,23 +1475,21 @@ funnel(mod_full,
 dat$effectN <- (dat$Ncontrol * dat$NTreat) / (dat$Ncontrol + dat$NTreat)
 dat$sqeffectN <- sqrt(dat$effectN)
 
-mod0e <- rma.mv(yi = SMD,
+mod_mae <- rma.mv(yi = SMD,
                 V = VCV,
                 mods = ~ sqeffectN,
-                random = list(#~1 | Phylo,
+                random = list(
                   ~1 | FocalSpL,
                   ~1 | RecNo,
-                  #~1 | SubjectID, # incoprated as VCV
                   ~1 | Obs_ID),
-                #R = list(Phylo = cor_tree),
                 test = "t",
                 method = "REML", 
                 sparse = TRUE,
                 data = dat)
 
-summary(mod0e)
+summary(mod_mae)
 
-bubble_plot(mod0e,
+bubble_plot(mod_mae,
             mod = "sqeffectN",
             group = "RecNo",
             xlab = "Effective N",
@@ -1498,23 +1500,21 @@ bubble_plot(mod0e,
 
 ```{r}
 # decline effect
-mod0d <- rma.mv(yi = SMD,
+mod_mad <- rma.mv(yi = SMD,
                 V = VCV,
                 mods = ~ Year,
-                random = list(#~1 | Phylo,
+                random = list(
                   ~1 | FocalSpL,
                   ~1 | RecNo,
-                  #~1 | SubjectID, # incoprated as VCV
                   ~1 | Obs_ID),
-                #R = list(Phylo = cor_tree),
                 test = "t",
                 method = "REML", 
                 sparse = TRUE,
                 data = dat)
 
-summary(mod0d)
+summary(mod_mad)
 
-bubble_plot(mod0d,
+bubble_plot(mod_mad,
             mod = "Year",
             group = "RecNo",
             xlab = "Publication year",
@@ -1545,8 +1545,12 @@ mod_fulle <- rma.mv(yi = SMD,
                    data = dat_short)
 summary(mod_fulle)
 
-dat_fulle <- qdrg(object = mod_fulle, 
-                  data = dat_short)
+bubble_plot(int_trt, group = "RecNo", mod = "sqeffectN", xlab = "ln(duration in days)",
+            legend.pos = "top.left", condition.nrow = 3, g = TRUE)
+
+bubble_plot(int_trt, group = "RecNo", mod = "sln_duration", xlab = "ln(duration in days)",
+            legend.pos = "top.left", condition.nrow = 3, g = TRUE)
+
 # marginalized overall mean at vi = 0 and year.c = 0; also weights = "prop" or "cells" average things over proportionally. if not specified, all groups (levels) get the same weights
 # res_fulle1 <- emmeans(dat_fulle, 
 #                      specs = ~ sqeffectN,
