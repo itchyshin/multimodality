@@ -658,6 +658,7 @@ ggplot(tab,
 ```{r}
 ##| warning: false
 # VCV matrix
+# TODO - new phylogeny
 
 VCV <- vcalc(vi = dat$Vd,
              cluster = dat$SubjectID,
@@ -930,7 +931,7 @@ mod_type2 <- rma.mv(yi = SMD,
 
 summary(mod_type2)
 
-orchard_plot(mod2b, 
+orchard_plot(mod_type2, 
              mod = "Type",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)",
@@ -1420,12 +1421,14 @@ orchard_plot(mod_full,
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
 
+# interaction plot of duration with trait types
 int_type <- mod_results(mod_full, mod = "sln_duration", group = "RecNo", weights = "prop",
                                    by = "Type")
 
 bubble_plot(int_type, group = "RecNo", mod = "sln_duration", xlab = "ln(duration in days) (z-transformed)",
                      legend.pos = "top.left", condition.nrow = 3, g = TRUE)
 
+# interaction plot of duration with trait types
 int_trt <- mod_results(mod_full, mod = "sln_duration", group = "RecNo", weights = "prop",
                         by = "Treat_mod")
 
@@ -1455,15 +1458,26 @@ importance <- sw(candidates)
 ```{r}
 funnel(mod_ma2, 
        yaxis="seinv",
-       type = "rstudent"
+       # = "rstudent",
+       xlab = "Standarized residuals",
+       ylab = "Precision (inverse of SE)",
+       ylim = c(0.001, 16),
+       xlim = c(-10,15),
+       digits=c(0,1)
        )
 ```
+
 ## Funnel plot: multi-moderator
 
 ```{r}
 funnel(mod_full, 
        yaxis="seinv",
-       type = "rstudent"
+       #type = "rstudent",
+       xlab = "Standarized residuals",
+       ylab = "Precision (inverse of SE)",
+       ylim = c(0.001, 1.5),
+       xlim = c(-5,10),
+       digits=c(0,1)
        )
 ```
 
@@ -1545,17 +1559,14 @@ mod_fulle <- rma.mv(yi = SMD,
                    data = dat_short)
 summary(mod_fulle)
 
-bubble_plot(int_trt, group = "RecNo", mod = "sqeffectN", xlab = "ln(duration in days)",
+# small-study
+bubble_plot(mod_fulle, group = "RecNo", mod = "sqeffectN", xlab = "ln(duration in days)",
             legend.pos = "top.left", condition.nrow = 3, g = TRUE)
 
-bubble_plot(int_trt, group = "RecNo", mod = "sln_duration", xlab = "ln(duration in days)",
+# decline
+bubble_plot(mod_fulle, group = "RecNo", mod = "Year", xlab = "ln(duration in days)",
             legend.pos = "top.left", condition.nrow = 3, g = TRUE)
 
-# marginalized overall mean at vi = 0 and year.c = 0; also weights = "prop" or "cells" average things over proportionally. if not specified, all groups (levels) get the same weights
-# res_fulle1 <- emmeans(dat_fulle, 
-#                      specs = ~ sqeffectN,
-#                      df = mod_fulle$ddf, 
-#                      weights = "prop")
 ```
 
 :::
@@ -1564,21 +1575,27 @@ bubble_plot(int_trt, group = "RecNo", mod = "sln_duration", xlab = "ln(duration 
 
 ::: {.panel-tabset}
 
-## Figure X
+## Figure: alluvial plots
 
 ```{r}
 
 ```
 
 
-## Figure XX
+## Figure: phylogeny + world map
 
 ```{r}
 
 ```
 
 
-## Figure XXX
+## Figure: main and different modality
+
+```{r}
+
+```
+
+## Figure: different moderators
 
 ```{r}
 
