@@ -60,32 +60,13 @@ p_load(
     pander
 )
 
-# library(tidyverse)
-# library(here)
-# library(lme4)
-# library(orchaRd)
-# library(metafor)
-# library(patchwork)
-# library(alluvial)
-# library(ggalluvial)
-# library(easyalluvial)
-# library(ape)
-# library(clubSandwich)
-# library(emmeans)
-# library(MuMIn)
-# library(kableExtra)
-# library(pander)
 # making metafor talk to MuMIn
 eval(metafor:::.MuMIn)
-# install.packages("pak")
-# pak::pak("MichelNivard/gptstudio")
 ```
 
 ## Getting data loaded
 
 ```{r}
-#dat_full <- read.csv(here("data/dat_04_04_2023.csv"))
-#dat_full <- read.csv(here("data/dat_28_06_2023.csv"))
 dat_full <- read.csv(here("data/dat_19_07_2023.csv"))
 
 # add phylogenetic tree - only topologies
