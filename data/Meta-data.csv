@@ -1,0 +1,54 @@
+﻿ColumnID,Description,"Allowed values, details"
+ExtractedBy,who extracted data from primary source,KJM or JDAT
+RecNo,Reference number from EndNote library,
+Author,First Author's Last Name,
+Year,Publication year,
+FocalSpC,Common name of focal species,
+FocalSpL,Scientific name of focal species,
+MultiplePred,Is the study using multiple species of predators at the same time? (Y = Yes or  N = No),"Y = Yes, N = No, NS = Not specified (e.g., if mobbing calls used as treatment, and context they were recorded in is not known)"
+PredSpC,Common name of predator species,"leave blank if multiple species included in treatment, or if predator species unknown (e.g., context of mobbing calls not provided)"
+PredSpL,Scientific name of predator species,"leave blank if multiple species included in treatment, or if predator species unknown (e.g., context of mobbing calls not provided)"
+PredGuild,Guild of predator used in experiment,"Bird (including if multiple species of birds), Mammal (including if multiple species of mammals), Reptile (including if multiple species of reptile), Fish, mix (if multiple species of different guilds), NS (if not specified)"
+PredTo,indicates whether the predator a threat to adults or nestlings/eggs,"A = adults, N =  nestlings/eggs, B = both (because manipulation involved mutiple types of predators)"
+Setting,Context under which the experiment was carried out,"Field, Lab, Semi-Natural (e.g., outdoor aviary)"
+Treatment,Type of cue used to increase the perceived predation,"A = acoustic, O = olfactory, V= visual, M = slow movement (always modifier to V), G = fast movement (e.g., gliding, always modifier to V). Each of these treatment categories can be alone or combined.  L = live predator (experimental presentation of live predator, e.g., in cage or via falconer). P (visual with dead prey)"
+Season,Phenology of the focal species during the experiment,"breeding, non-breeding, migration"
+Design,Form of comparison of study.,"among (i.e., comparison among groups), within (i.e., within-subject comparison such as before/after), both (within and among comparisons pooled in study and could not be separated)"
+TreatmentDuration,"Duration of treatments from start to finish. E.g., if playbacks were 3 minutes twice a day for 3 days, duration = 3 days.","NUMBER in seconds, minutes, hours, days, weeks, months."
+Duration_days,"treatment duration expressed in number of days. If treatment was < 1 day in length, expressed as a proportion 12 hrs (mean duration of full day or full night)",
+ControlType,Type of control used in the experiment,"Blank = no control, NonPred = NonPredator, disturbance = control for disturbance associated ith treatment (e.g., =control for human approach and/or non-biological aspects of treatment (e.g. presence of speaker)"
+Sex,Sex of the focal indivdiuals ,"M = Male, F= Female, both = sex not specified, or specifed to include both males and femaes"
+Age,Age of focal individuals,"A = Adult, N = Nestling, J = Juveniles (including fledglings and first year birds), E = Egg"
+N,"Sample size: where analysis level is individuals = number of individuals, where anlysis level is flock = number of flocks",
+Nobs,Total number of observations including repeated measures,
+NIndTreat,Number of individuals included in the treatment,
+NIndControl,Number of  individuals in the control group,
+SubjectID,Reference number to set of individuals,"values include mix of unique letters and unique numbers, should be treated as character"
+ResponseID,Reference number to set of responses measured (must be independent in time),"values are numeric, but should be treated as character. If response ID for a set of individuals within the same study is the same- it means the response measures were non-independnet (e.g., scoring both provisioning rate and biomass delivery rate as measures of provisioning)."
+Type,Broad classification of responses,"Behaviour, LifeHistory, Physiology (includes Morphology)"
+Category,,Category of response type (see Table)
+Subcategory,Details on response variable. Subclassification of Category,Subcategory of response category (see Table)
+ResponseDetails,Specific type of response recorded of measured,details of response variable from study
+PredictedDirection,"Predicted direction of effect of increased predation risk from theory (e.g., vigilance = positive, foraging = negative)","1 (positive), -1 (negative)"
+Direction,Direction of effect relative to response description,"1 = effect reported is consistent with label (e.g. ,positive value indicates increase in response), -1 = effect direction needs to be switched (e.g., latency to resume feeding should be multipled by -1 to represent foraging)"
+Interaction,"In case of Models or more than one variable measure at the same time, which variable have interaction with the response",
+d,Cohge's d value for ES,NUMBER
+l_95,Lower 95 CI for the d value,NUMBER
+u_95,Upper 95 CI for the d value,NUMBER
+v,,NUMBER
+method,Reference to the method used from the ES calculator. ,NUMBER
+Calculation,Reference to location of the information used for the ES calculation,NUMBER
+Beta (estimate),Estimated value in Models,NUMBER
+l95CI,CI inferior limit for Beta,NUMBER
+U95CI,CI superior limit for Beta,NUMBER
+SE,,NUMBER
+t,T test values,NUMBER
+T,,NUMBER
+Z,,NUMBER
+F,Values of ANOVA type analysis,NUMBER
+X2,,NUMBER
+H,,NUMBER
+U,,NUMBER
+p,P values of Significance,NUMBER
+Comments,,
+,,

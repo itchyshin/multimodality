@@ -1,5 +1,6 @@
 ---
 title: "**Integration of multimodal cues does not alter mean but reduces variance in avian responses to predators: a systematic review and meta-analysis**"
+subtitle: "**Supplmentary Material**"
 author: "**Kim + Shinichi et al.**"
 date: "`r Sys.Date()`"
 format:
@@ -35,6 +36,8 @@ execute:
 
 ## Setting up
 
+### Loading packages
+
 ```{r}
 # install.packages("pacman")
 # pacman::p_load(devtools, tidyverse, metafor, patchwork, R.rsp, emmeans)
@@ -64,13 +67,11 @@ p_load(
 eval(metafor:::.MuMIn)
 ```
 
-## Getting data loaded
+### Getting data loaded
 
 ```{r}
 dat_full <- read.csv(here("data/dat_19_07_2023.csv"))
 
-# add phylogenetic tree - only topologies
-# TODO? - we could get better tree from birdtree.org
 # we can do 50 different trees as in 
 # https://academic.oup.com/sysbio/article/68/4/632/5267840
 tree_top <- read.tree(here("R/birds_MA.tre"))
@@ -80,9 +81,20 @@ tree <- compute.brlen(tree_top)
 #plot(tree)
 # turning it into a correlation matrix
 cor_tree <- vcv(tree,corr=T)
+
 ```
 
-## Custom functions
+### Raw data and meta-data
+
+```{r}
+
+
+
+```
+### Custom functions
+
+We have 5 custom functions named : `cont_gen()`,`get_pred1()`, `get_pred2()`, `mr_results()`, and `all_models()`, all of which are used later (see below for their functionality) and the code is included here.
+
 
 ```{r}
 # custom functions
@@ -250,7 +262,7 @@ all_models <- function(model, mod = " ", type = "homo") {
 #all_models(mod1s2, mod = "Treat_mod")
 ```
 
-## Preparing data set
+### Preparing data set
 
 ```{r}
 # function for calculating variance
@@ -349,6 +361,12 @@ dat <- dat %>%
 # reordering factors for better visualization
 
 # dat$Treat_mod <- factor(dat$Treat_mod, levels = c("A", "V", "AV", "O", "OV", "AVO"))
+
+```
+
+### Processed data and missing data
+
+```{r}
 
 ```
 
