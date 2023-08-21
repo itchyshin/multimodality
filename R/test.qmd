@@ -70,7 +70,7 @@ eval(metafor:::.MuMIn)
 ### Getting data loaded
 
 ```{r}
-dat_full <- read.csv(here("data/dat_19_07_2023.csv"))
+dat_full <- read.csv(here("data/dat_19_07_2023_spp.csv"))
 
 # we can do 50 different trees as in 
 # https://academic.oup.com/sysbio/article/68/4/632/5267840
@@ -87,8 +87,9 @@ cor_tree <- vcv(tree,corr=T)
 ### Raw data and meta-data
 
 ```{r}
-
-
+# making a scrollable table
+kable(dat_full, "html") %>% kable_styling("striped", position = "left", full_width = FALSE) %>% scroll_box(width = "100%", 
+    height = "500px")
 
 ```
 ### Custom functions
