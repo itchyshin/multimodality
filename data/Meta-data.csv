@@ -1,6 +1,6 @@
 ﻿ColumnID,Description,"Allowed values, details"
-ExtractedBy,who extracted data from primary source,KJM or JDAT
 RecNo,Reference number from EndNote library,
+ExtractedBy,who extracted data from primary source,KJM or JDAT
 Author,First Author's Last Name,
 Year,Publication year,
 FocalSpC,Common name of focal species,
@@ -50,5 +50,5 @@ X2,,NUMBER
 H,,NUMBER
 U,,NUMBER
 p,P values of Significance,NUMBER
-Comments,,
-,,
+Details,Comments,
+PredSpL_corrected,"Scientific name of focal species, matched with the phylogenetic tree used",

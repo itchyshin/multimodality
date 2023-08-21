@@ -13,8 +13,8 @@ tree_all <- read.tree(here("phy.tre"))
 tree_50 <- head(tree_all, 50)
 #tree <- tree_all[[1]]
 #saveRDS(tree, here("misc", "tree.RDS"))
-tree <- readRDS(here("misc", "tree.RDS"))
-#write.tree(tree, here("misc", "tree.tr"))
+tree <- readRDS(here("tree", "tree.RDS"))
+#write.tree(tree, here("misc", "tree.tre"))
 
 
 #fix species in teh data set to match the tree
@@ -58,6 +58,6 @@ take_out <- setdiff(tree$tip.label, unique(dat$FocalSpL_corrected))
 
 tree_50 <- map(tree_50, ~drop.tip(.x, take_out))
 
-saveRDS(tree, here("misc", "tree_50.RDS"))
+saveRDS(tree_50, here("tree", "tree_50.RDS"))
 
 write.csv(dat, file = "data/dat_19_07_2023_spp.csv", row.names = F)

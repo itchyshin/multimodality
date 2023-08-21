@@ -71,13 +71,13 @@ eval(metafor:::.MuMIn)
 
 ```{r}
 dat_full <- read.csv(here("data/dat_19_07_2023_spp.csv"))
+meta_dat <- read.csv(here("data/Meta-data.csv"))
 
 # we can do 50 different trees as in 
 # https://academic.oup.com/sysbio/article/68/4/632/5267840
-tree_top <- read.tree(here("R/birds_MA.tre"))
+tree_50 <- readRDS(here("tree/tree_50.RDS"))
 
-# tree with branch lengths
-tree <- compute.brlen(tree_top)
+tree <- tree_50[[1]]
 #plot(tree)
 # turning it into a correlation matrix
 cor_tree <- vcv(tree,corr=T)
@@ -88,9 +88,17 @@ cor_tree <- vcv(tree,corr=T)
 
 ```{r}
 # making a scrollable table
-kable(dat_full, "html") %>% kable_styling("striped", position = "left", full_width = FALSE) %>% scroll_box(width = "100%", 
+kable(dat_full, "html", escape = FALSE) %>% kable_styling("striped", position = "left", full_width = TRUE) %>% 
+  column_spec(66, width_min = "5in") %>% 
+  scroll_box(width = "100%", 
     height = "500px")
 
+# meta-data for it
+kable(meta_dat, "html", escape = FALSE) %>% kable_styling("striped", position = "left", full_width = TRUE) %>% 
+   column_spec(2, width_min = "3in") %>% 
+   column_spec(3, width_min = "6in") %>% 
+  scroll_box(width = "100%", 
+    height = "500px")
 ```
 ### Custom functions
 
@@ -661,8 +669,13 @@ ggplot(tab,
 
 ```{r}
 ##| warning: false
+
+# creating Spp and Phylo varaibles from FocalSpL_corrected
+
+dat$Spp <- dat$FocalSpL_corrected
+dat$Phylo <- dat$FocalSpL_corrected
+
 # VCV matrix
-# TODO - new phylogeny
 
 VCV <- vcalc(vi = dat$Vd,
              cluster = dat$SubjectID,
@@ -670,12 +683,12 @@ VCV <- vcalc(vi = dat$Vd,
 
 mod_ma <- rma.mv(yi = SMD,
        V = VCV, 
-       random = list(#~1 | Phylo,
-                     ~1 | FocalSpL,
+       random = list(~1 | Phylo,
+                     ~1 | Spp,
                      ~1 | RecNo,
-                     ~1 | SubjectID, # incoprated as VCV
+                     ~1 | SubjectID, # Incorporated as VCV
                      ~1 | Obs_ID),
-      # R = list(Phylo = cor_tree),
+      R = list(Phylo = cor_tree),
        test = "t",
        method = "REML", 
        sparse = TRUE,
@@ -683,8 +696,8 @@ mod_ma <- rma.mv(yi = SMD,
 
 summary(mod_ma)
 
-# TODO - think about whether we add this or not
-robust(mod_ma, cluster = dat$SubjectID)
+# this could be added but not probably necessary
+#robust(mod_ma, cluster = dat$SubjectID)
 
 round(i2_ml(mod_ma), 2)
 
@@ -699,6 +712,35 @@ orchard_plot(mod_ma,
 
 ```{r}
 # TODO
+
+# function to run the meta-analysis above
+model_run <- function(cor_tree = vcv_tree){
+  model <- rma.mv(yi = SMD,
+       V = VCV, 
+       random = list(~1 | Phylo,
+                     ~1 | Spp,
+                     ~1 | RecNo,
+                     ~1 | SubjectID, 
+                     ~1 | Obs_ID),
+      R = list(Phylo = cor_tree),
+       test = "t",
+       method = "REML", 
+       sparse = TRUE,
+       data = dat)
+  model
+}
+
+# creating 50 correlation matrixes from 50 different trees
+vcv_tree_50 <- map(tree_50, vcv)
+
+# running 50 meta-analyses with 50 different trees
+ma_50 <- map(vcv_tree_50, model_run)
+
+# TODO we probably need to save 
+saveRDS(ma_50, here("Rdata", "ma_50.RDS"))
+
+# combining the results
+res_50 <- ma_5
 
 
 ```
