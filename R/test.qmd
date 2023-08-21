@@ -367,6 +367,10 @@ dat <- dat %>%
 ### Processed data and missing data
 
 ```{r}
+# showing dataset table
+
+
+
 
 ```
 
