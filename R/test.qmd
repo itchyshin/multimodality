@@ -48,19 +48,21 @@ library(pacman)
 p_load(
     tidyverse,
     here,
-    lme4,
+    #lme4,
     orchaRd,
     metafor,
     patchwork,
     alluvial,
     ggalluvial,
     ape,
-    easyalluvial,
+    #easyalluvial,
     clubSandwich,
     emmeans,
     MuMIn,
     kableExtra,
-    pander
+    pander,
+    parallel,
+    miWQS # for Rubin's rules
 )
 
 # making metafor talk to MuMIn
@@ -80,7 +82,7 @@ tree_50 <- readRDS(here("tree/tree_50.RDS"))
 tree <- tree_50[[1]]
 #plot(tree)
 # turning it into a correlation matrix
-cor_tree <- vcv(tree,corr=T)
+cor_tree <- vcv(tree, corr=T)
 
 ```
 
@@ -708,11 +710,10 @@ orchard_plot(mod_ma,
 
 ```
 
-## All random effects (100 trees)
+## All random effects (50 trees)
 
 ```{r}
-# TODO
-
+##| eval: false
 # function to run the meta-analysis above
 model_run <- function(cor_tree = vcv_tree){
   model <- rma.mv(yi = SMD,
@@ -731,18 +732,29 @@ model_run <- function(cor_tree = vcv_tree){
 }
 
 # creating 50 correlation matrixes from 50 different trees
-vcv_tree_50 <- map(tree_50, vcv)
+vcv_tree_50 <- map(tree_50, ~vcv(.x, corr = TRUE))
 
 # running 50 meta-analyses with 50 different trees
-ma_50 <- map(vcv_tree_50, model_run)
+# one can change mc.cores according to one's computer
+ma_50 <- mclapply(vcv_tree_50, model_run, mc.cores = 18)
 
-# TODO we probably need to save 
+# saving the runs
 saveRDS(ma_50, here("Rdata", "ma_50.RDS"))
+```
+
+```{r}
+ma_50 <- readRDS(here("Rdata", "ma_50.RDS"))
 
 # combining the results
-res_50 <- ma_5
+est_50 <- map_dbl(ma_50, ~ .x$b[[1]])
+se_50 <-  map_dbl(ma_50, ~ .x$se)
+df_50 <- c(rbind(est_50, se_50))
+  
+# combine the data frames into an array
+my_array <- array(df_50, dim = c(1, 2, 50))
 
-
+# combining all the results from 50 models using Rubin's rules
+pool.mi(my_array) 
 ```
 
 
