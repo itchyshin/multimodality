@@ -41,8 +41,13 @@ execute:
 ```{r}
 # install.packages("pacman")
 # pacman::p_load(devtools, tidyverse, metafor, patchwork, R.rsp, emmeans)
-
 # devtools::install_github("daniel1noble/orchaRd", force = TRUE)
+
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("ggtree")
+
 library(pacman)
 
 p_load(
@@ -62,7 +67,12 @@ p_load(
     kableExtra,
     pander,
     parallel,
-    miWQS # for Rubin's rules
+    miWQS, # for Rubin's rules
+    ggtree,
+    ggstance,
+    readxl,
+    maps,
+    ggthemes
 )
 
 # making metafor talk to MuMIn
@@ -309,7 +319,7 @@ dat_full$Vd <- with(dat_full, pmap_dbl(list(SMD, NTreat, Ncontrol, Design), Vd_f
 
 # observation id
 dat_full$Obs_ID <- 1:nrow(dat_full)
-dat_full$Phylo <- gsub(" ", "_", dat_full$FocalSpL)
+#dat_full$Phylo <- gsub(" ", "_", dat_full$FocalSpL)
 
 # filtering very large variance and also very small sample size
 dat_int <- dat_full %>% filter(Vd < 10 & Ncontrol > 2 & NTreat > 2)
@@ -367,7 +377,12 @@ dat_short_add <- dat %>% filter(Treat_mod == "AV" | Treat_mod == "V")
 
 
 dat <- dat %>%
-  mutate_if(is.character, as.factor)
+  mutate_if(is.character, as.factor) %>% 
+  select(RecNo, Year, PredGuild, PredTo, Setting, 
+         Season, Design, duration_days, ResponsePeriod, 
+         ControlType, Sex, Age, NTreat, Ncontrol, 
+         SubjectID, Type, Category, FocalSpL_corrected,
+         SMD, Vd, Obs_ID, Treat_mod, Treat_No, Add_on) #TODO
 
 # reordering factors for better visualization
 
@@ -375,13 +390,14 @@ dat <- dat %>%
 
 ```
 
-### Processed data and missing data
+### Processed data
 
 ```{r}
-# showing dataset table
-
-
-
+# showing processed data table
+kable(dat, "html", escape = FALSE, digits = 3) %>% kable_styling("striped", position = "left", full_width = TRUE) %>% 
+ # column_spec(66, width_min = "5in") %>% 
+  scroll_box(width = "100%", 
+    height = "500px")
 
 ```
 
@@ -422,7 +438,7 @@ ggplot(tab,
 ## Treatment vs. Treatment duration
 ```{r}
 # tuning Treatment duration into a binary variable
-dat_short %>% mutate(TDration = case_when(duration_days < 1 ~ "< 1 day",
+dat_short %>% mutate(TDuration = case_when(duration_days < 1 ~ "< 1 day",
                                           duration_days >= 1 ~ "> 1 day")) -> dat_short
 
 # reformatting data
@@ -606,18 +622,18 @@ ggplot(tab,
 
 # turn duration_days into a binary factor: less than 1 and more than 1
 
-dat %>% mutate(TDration = case_when(duration_days < 1 ~ "< 1 day",
+dat %>% mutate(TDuration = case_when(duration_days < 1 ~ "< 1 day",
                                           duration_days >= 1 ~ "> 1 day")) -> dat
 
 
-dat %>% group_by(Type, TDration) %>%
+dat %>% group_by(Type, TDuration) %>%
   summarise(n = n()) -> tab2
 
 # using ggaruvial
 ggplot(tab2,
        aes(y = n,
            axis1 = Type,
-           axis2 = TDration)) +
+           axis2 = TDuration)) +
   geom_alluvium(aes(fill = Type)) +
   geom_stratum(alpha = 0.5) +
   geom_text(stat = "stratum", size = 4, aes(label = after_stat(stratum))) +
@@ -1507,7 +1523,7 @@ mr_averaged_aic2 <- summary(model.avg(candidates, delta < 5))
 importance <- sw(candidates)
 ```
 
-## Publication bias
+## Publication bias and sensitivty analyses
 
 ::: {.panel-tabset}
 
@@ -1627,22 +1643,151 @@ bubble_plot(mod_fulle, group = "RecNo", mod = "Year", xlab = "ln(duration in day
 
 ```
 
+## Leave-1study-out (sensitivity analysis)
+
+```{r}
+# TODO
+
+
+
+```
+
+
+
 :::
 
 ## Figure gallery
 
 ::: {.panel-tabset}
 
-## Figure: alluvial plots
+## Figure: phylogeny + world map
 
 ```{r}
+
+slist <- read_excel(here("data", "Species list.xlsx"))
+
+slist %>% mutate_if(is.character, as.factor) ->slist
+
+dat2 <- dat %>% group_by(FocalSpL_corrected) %>% 
+  summarise(N_obs = n())
+
+dat2$FocalSpL_corrected <- gsub("_", " ",dat2$FocalSpL_corrected)
+
+slist$Species_L <- gsub("_", " ", slist$Species_L)
+
+# TODO - change tip label
+tree$tip.label <-  gsub("_", " ", tree$tip.label)
+
+
+phy_fig1 <- ggtree(tree, branch.length = "branch.length") 
+
+phy_fig2 <- phy_fig1 %<+% slist + geom_tiplab(size=2,fontface = "italic") + 
+  geom_tippoint() + 
+  xlim_expand(c(0,120), panel = "Tree") #+ guides(color="none")  
+
+phy_fig2
+
+phy_fig3 <- facet_plot(phy_fig2, panel = 'k (effect sizes)', data = dat2, 
+				geom = geom_barh, 
+				mapping = aes(x = N_obs), alpha = 0.7, stat='identity') + 
+        
+  # geom_facet(panel = "Estimates of mean ratio (lnRR)", data = re.spp.lnRR2,
+  #          geom = geom_barh, 
+  #          mapping =  aes(x = N_obs, fill=Family, color=Family), alpha = 0.4, stat='identity') + 
+  
+        guides(fill="none",color="none") + 
+        theme_tree2() + theme(strip.background = element_rect(fill = "white"))
+
+phy_fig4 <-  facet_widths(phy_fig3, widths = c(0.7, 0.3))
+
+phy_fig4
+
+# colouring
+# phy_fig2 <- phy_fig1 %<+% slist + geom_tiplab(aes(color  = Family),size=3,fontface = "italic") + geom_tippoint(aes(color=Family)) + xlim_expand(c(0,120), panel = "Tree") + guides(color="none")  
+# 
+# phy_fig2
+# 
+# phy_fig3 <- facet_plot(phy_fig2, panel = 'k (effect sizes)', data = dat2, 
+# 				geom = geom_barh, 
+# 				mapping = aes(x = N_obs, fill=Family, color=Family), alpha = 0.4, stat='identity') + 
+#         
+#   # geom_facet(panel = "Estimates of mean ratio (lnRR)", data = re.spp.lnRR2,
+#   #          geom = geom_barh, 
+#   #          mapping =  aes(x = N_obs, fill=Family, color=Family), alpha = 0.4, stat='identity') + 
+#   
+#         guides(fill="none",color="none") + 
+#         theme_tree2() + theme(strip.background = element_rect(fill = "white"))
+# 
+# phy_fig4 <-  facet_widths(phy_fig3, widths = c(0.7, 0.3))
+# 
+# phy_fig4
 
 ```
 
 
-## Figure: phylogeny + world map
+## Figure: world map
 
 ```{r}
+# reading in country data
+
+clist <- read_excel(here("data", "StudyCountries.xlsx"))
+
+#clist %>% mutate_if(is.character, as.factor) -> clist
+
+cdat <- clist %>% group_by(StudyCountry) %>% 
+  summarise(N_obs = n())
+
+cdat$region <- cdat$StudyCountry
+cdat$n <- cdat$N_obs
+cdat <- cdat[, 3:4]
+#cdat$region <- as()
+
+# need to tell 
+cdat$region[cdat$region == "England"] <- "UK" 
+cdat$region[cdat$region == "Scotland"] <- "UK" 
+cdat$region[cdat$region == "Kerguelen Islands"] <- "France"
+cdat$region[cdat$region == "Republic of Korea"] <- "South Korea"
+
+#https://www.riinu.me/2022/02/world-map-ggplot2/
+
+world_map <- map_data("world") %>% 
+  filter(! long > 180) #remove countries with longitude >180 to make equal projection-like map without artifacts
+
+#which(is.na(match(cdat$region, world_map$region)) == T)
+#cdat$region[which(is.na(match(cdat$region, world_map$region)) == T)]
+
+## colour all regions on the map:
+
+emptymap <- world_map %>% group_by(region) %>% 
+  summarise(N_obs = n(), long = mean(long), lat = mean(lat))
+
+emptymap$n <- 0
+
+# emptymap <- tibble(region = unique(world_map$region), 
+#                    n = rep(0,length(unique(world_map$region)))) #create table with all counts as 0
+fullmap <- left_join(emptymap, cdat, by = "region") #join with actual counts table
+fullmap$n <- fullmap$n.x + fullmap$n.y # make new column for fixed counts
+fullmap$n[is.na(fullmap$n)] <- 0 #change NA to 0 for regions with no counts
+
+map_fig <- fullmap %>% 
+  ggplot(aes(fill = n, map_id = region)) +
+  geom_map(map = world_map) +
+  expand_limits(x = world_map$long, y = c(-50, 80)) +
+  #coord_map("moll") +
+  theme_map() + 
+  theme(legend.position="right") +
+  #geom_text(aes(x = long, y = lat, label = n), size = 3, color = "black") +
+  scale_fill_gradient(low = "#FEE08B", high = "#D53E4F",
+                      #low = "white", high = "red",
+                      limits = c(1, 30),
+      guide = guide_colorbar(direction = "vertical.")) +
+  guides(fill = guide_colourbar(barwidth = unit(15, units = "mm"), barheight = unit(20, units = "mm")))  +
+  theme(legend.position = c(0.05, 0))
+
+
+map_fig
+
+phy_fig4 / map_fig +  plot_annotation(tag_levels = 'A') + plot_layout(heights = c(2.5,1.2))
 
 ```
 
