@@ -72,7 +72,12 @@ p_load(
     ggstance,
     readxl,
     maps,
-    ggthemes
+    ggthemes,
+    cowplot,
+    png,
+    grid,
+    raster,
+    magick
 )
 
 # making metafor talk to MuMIn
@@ -227,7 +232,7 @@ all_models <- function(model, mod = " ", type = "homo") {
     rma.mv(yi = SMD, 
          V = VCV1, 
          mods = ~ relevel(dat2[[mod]], ref = name), 
-         random = list(~1 | FocalSpL,
+         random = list(~1 | Spp,
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                test = "t",
@@ -240,7 +245,7 @@ all_models <- function(model, mod = " ", type = "homo") {
     rma.mv(yi = SMD,
          V = VCV1,
          mods = ~ relevel(dat2[[mod]], ref = name),
-         random = list(~1 | FocalSpL,
+         random = list(~1 | Spp,
                              ~1 | RecNo,
                              formula(paste("~", mod, "| Obs_ID"))),
                test = "t",
@@ -367,7 +372,20 @@ dat_int %>% mutate(Treat_mod = case_when(Treatment == "A" ~ "A",
                                          Treatment == "VM" ~ "Yes",
                                          Treatment == "VP" ~ "Yes"),
 
-                      ) -> dat
+                      ) -> dat_int2
+
+
+
+dat <- dat_int2 %>%
+  mutate_if(is.character, as.factor) %>% 
+  mutate(Spp = FocalSpL_corrected,
+         Phylo = FocalSpL_corrected) %>% 
+  select(RecNo, Year, PredGuild, PredTo, Setting, 
+         Season, Design, duration_days, ResponsePeriod, 
+         ControlType, Sex, Age, NTreat, Ncontrol, 
+         SubjectID, Type, Category, Spp, Phylo,
+         SMD, Vd, Obs_ID, Treat_mod, Treat_No, Add_on) #TODO
+
 
 # creating data just for A, V, and AV 
 dat_short <- dat %>% filter(Treat_mod == "A" | Treat_mod == "V" | Treat_mod == "AV")
@@ -376,17 +394,10 @@ dat_short <- dat %>% filter(Treat_mod == "A" | Treat_mod == "V" | Treat_mod == "
 dat_short_add <- dat %>% filter(Treat_mod == "AV" | Treat_mod == "V")
 
 
-dat <- dat %>%
-  mutate_if(is.character, as.factor) %>% 
-  select(RecNo, Year, PredGuild, PredTo, Setting, 
-         Season, Design, duration_days, ResponsePeriod, 
-         ControlType, Sex, Age, NTreat, Ncontrol, 
-         SubjectID, Type, Category, FocalSpL_corrected,
-         SMD, Vd, Obs_ID, Treat_mod, Treat_No, Add_on) #TODO
-
 # reordering factors for better visualization
 
-# dat$Treat_mod <- factor(dat$Treat_mod, levels = c("A", "V", "AV", "O", "OV", "AVO"))
+dat$Treat_mod <- factor(dat$Treat_mod, levels = rev(c("A", "V", "AV", "O", "OV", "AVO")))
+dat$Type <- factor(dat$Type, levels = rev(c("Behaviour", "LifeHistory", "Physiology")))
 
 ```
 
@@ -688,10 +699,6 @@ ggplot(tab,
 ```{r}
 ##| warning: false
 
-# creating Spp and Phylo varaibles from FocalSpL_corrected
-
-dat$Spp <- dat$FocalSpL_corrected
-dat$Phylo <- dat$FocalSpL_corrected
 
 # VCV matrix
 
@@ -773,8 +780,6 @@ my_array <- array(df_50, dim = c(1, 2, 50))
 pool.mi(my_array) 
 ```
 
-
-
 ## Reduced model
 
 ```{r}
@@ -782,7 +787,7 @@ pool.mi(my_array)
 
 mod_ma2 <- rma.mv(yi = SMD,
        V = VCV, 
-       random = list(~1 | FocalSpL,
+       random = list(~1 | Spp,
                      ~1 | RecNo,
                      ~1 | Obs_ID),
        test = "t",
@@ -810,7 +815,7 @@ round(i2_ml(mod_ma2), 2)
 
 mod_trt <- rma.mv(yi = SMD, 
                V = VCV, 
-               random = list(~1 | FocalSpL,
+               random = list(~1 | Spp,
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mod = ~ Treat_mod - 1,
@@ -837,6 +842,11 @@ all_models(mod_trt, mod = "Treat_mod")
 
 
 ```{r}
+
+# prep
+
+dat_short$Treat_mod <- factor(dat_short$Treat_mod, levels = rev(c("A", "V", "AV")))
+
 #homoscedastic model
 
 VCVs <- vcalc(vi = dat_short$Vd,
@@ -846,7 +856,7 @@ VCVs <- vcalc(vi = dat_short$Vd,
 
 mod_trt_1 <- rma.mv(yi = SMD,
                    V = VCVs,
-                   random = list(~1|FocalSpL,
+                   random = list(~1| Spp,
                                  ~1 | RecNo,
                                  ~1 | Obs_ID),
                    mod = ~ Treat_mod - 1, 
@@ -865,13 +875,14 @@ orchard_plot(mod_trt_1,
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
 
+homo_mod
 # result table (get all the constrasts)
 all_models(mod_trt_1, mod = "Treat_mod")
 
 # modeling heteroscedasticity
 mod_trt_2 <- rma.mv(yi = SMD, 
                 V = VCVs, 
-                random = list(~1|FocalSpL , 
+                random = list(~1|Spp , 
                               ~1 | RecNo, 
                               ~ Treat_mod | Obs_ID), 
                 mod = ~ Treat_mod - 1, 
@@ -888,7 +899,6 @@ orchard_plot(mod_trt_2,
              group = "RecNo", 
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
-
 
 # result table (get all the constrasts)
 all_models(mod_trt_2, mod = "Treat_mod")
@@ -913,7 +923,7 @@ VCVs2 <- vcalc(vi = dat_short_add$Vd,
 
 mod_add <- rma.mv(yi = SMD, 
                 V = VCVs2, 
-                random = list(~1|FocalSpL , 
+                random = list(~1|Spp , 
                               ~1 | RecNo, 
                               ~ 1 | Obs_ID), 
                 mod = ~ Treat_add - 1,
@@ -942,7 +952,7 @@ all_models(mod_add, mod = "Treat_add")
 
 mod_ord <- rma.mv(yi = SMD, 
                V = VCV, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo, 
                              ~1 | Obs_ID), 
                mod = ~ Treat_No, 
@@ -968,7 +978,7 @@ bubble_plot(mod_ord,
 # Type of responses 
 mod_type1 <- rma.mv(yi = SMD, 
                V = VCV, 
-               random = list(~1 | FocalSpL,
+               random = list(~1 | Spp,
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mod = ~ Type - 1,
@@ -981,11 +991,12 @@ summary(mod_type1)
 
 round(r2_ml(mod_type1)*100, 2)
 
-orchard_plot(mod_type1,
+ptype1 <- orchard_plot(mod_type1,
              mod = "Type",
              group = "RecNo", 
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
+ptype1
 
 # result table
 all_models(mod_type1, mod = "Type")
@@ -994,7 +1005,7 @@ all_models(mod_type1, mod = "Type")
 mod_type2 <- rma.mv(yi = SMD, 
                V = VCV, 
                mod = ~ Type - 1, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo, 
                              ~Type | Obs_ID), 
                struct = "DIAG",
@@ -1005,13 +1016,13 @@ mod_type2 <- rma.mv(yi = SMD,
 
 summary(mod_type2)
 
-orchard_plot(mod_type2, 
+ptype2 <- orchard_plot(mod_type2, 
              mod = "Type",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
 
-
+ptype2
 # result table
 all_models(mod_type2, mod = "Type")
 
@@ -1032,7 +1043,7 @@ dat$ln_duration <- log(dat$duration_days)
 
 mod_dur <- rma.mv(yi = SMD,
                V = VCV,
-               random = list(~1|FocalSpL,
+               random = list(~1|Spp,
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ ln_duration,
@@ -1064,7 +1075,7 @@ bubble_plot(mod_dur,
 # extra  - looking at the interaction
 mod_dur_int <- rma.mv(yi = SMD,
                V = VCV,
-               random = list(~1|FocalSpL,
+               random = list(~1|Spp,
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ ln_duration*Type,
@@ -1093,7 +1104,7 @@ bubble_plot(res,
 
 mod_sex1 <- rma.mv(yi = SMD, 
                V = VCV, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ Sex - 1,
@@ -1118,7 +1129,7 @@ all_models(mod_sex1, mod = "Sex")
 mod_sex2 <- rma.mv(yi = SMD, 
                 V = VCV, 
                 mod = ~ Sex - 1, 
-                random = list(~1|FocalSpL , 
+                random = list(~1|Spp , 
                               ~1 | RecNo, 
                               ~Sex | Obs_ID), 
                 struct = "DIAG",
@@ -1151,7 +1162,7 @@ anova(mod_sex1, mod_sex2)
 
 mod_cat <- rma.mv(yi = SMD, 
                V = VCV, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo, 
                              ~1 | Obs_ID), 
                mod = ~ Category - 1, 
@@ -1191,7 +1202,7 @@ VCVs3 <- vcalc(vi = data_preg$Vd,
 
 mod_preg <- rma.mv(yi = SMD, 
                V = VCVs3, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ PredGuild - 1,
@@ -1223,7 +1234,7 @@ all_models(mod_preg, mod = "PredGuild")
 
 mod_set <- rma.mv(yi = SMD, 
                V = VCV, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ Setting - 1,
@@ -1253,7 +1264,7 @@ all_models(mod_set, mod = "Setting")
 # Season
 mod_4 <- rma.mv(yi = SMD, 
                V = VCV, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ Season - 1,
@@ -1283,7 +1294,7 @@ all_models(mod_4, mod = "Season")
 # Design
 mod_d <- rma.mv(yi = SMD, 
                V = VCV, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ Design - 1,
@@ -1312,7 +1323,7 @@ all_models(mod_d, mod = "Design")
 # Response period
 mod_resp <- rma.mv(yi = SMD, 
                V = VCV, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ ResponsePeriod - 1,
@@ -1351,7 +1362,7 @@ VCVs4 <- vcalc(vi = data_cont$Vd,
 
 mod_cont <- rma.mv(yi = SMD, 
                V = VCVs4, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ ControlType - 1,
@@ -1395,7 +1406,7 @@ VCVs5 <- vcalc(vi = dat_age$Vd,
 # age
 mod_age <- rma.mv(yi = SMD, 
                V = VCVs5, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ Age - 1,
@@ -1429,7 +1440,7 @@ dat$PredTo[dat$PredTo == ""] <- NA
 
 mod_predt <- rma.mv(yi = SMD, 
                V = VCV, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ PredTo - 1,
@@ -1469,7 +1480,7 @@ dat_short$sln_duration <- scale(log(dat_short$duration_days))
 
 mod_full <- rma.mv(yi = SMD, 
                V = VCVs, 
-               random = list(~1|FocalSpL , 
+               random = list(~1|Spp , 
                              ~1 | RecNo,
                              ~1 | Obs_ID),
                mods =  ~ sln_duration*Type +
@@ -1539,12 +1550,13 @@ funnel(mod_ma2,
        xlim = c(-10,15),
        digits=c(0,1)
        )
+
 ```
 
 ## Funnel plot: multi-moderator
 
 ```{r}
-funnel(mod_full, 
+fun2 <- funnel(mod_full, 
        yaxis="seinv",
        #type = "rstudent",
        xlab = "Standarized residuals",
@@ -1553,6 +1565,8 @@ funnel(mod_full,
        xlim = c(-5,10),
        digits=c(0,1)
        )
+
+fun2
 ```
 
 ## Egger regression: uni-moderator
@@ -1567,7 +1581,7 @@ mod_mae <- rma.mv(yi = SMD,
                 V = VCV,
                 mods = ~ sqeffectN,
                 random = list(
-                  ~1 | FocalSpL,
+                  ~1 | Spp,
                   ~1 | RecNo,
                   ~1 | Obs_ID),
                 test = "t",
@@ -1577,11 +1591,13 @@ mod_mae <- rma.mv(yi = SMD,
 
 summary(mod_mae)
 
-bubble_plot(mod_mae,
+small <- bubble_plot(mod_mae,
             mod = "sqeffectN",
             group = "RecNo",
             xlab = "Effective N",
             g = TRUE)
+
+small
 ```
 
 ## Decline effect: uni-moderator
@@ -1592,7 +1608,7 @@ mod_mad <- rma.mv(yi = SMD,
                 V = VCV,
                 mods = ~ Year,
                 random = list(
-                  ~1 | FocalSpL,
+                  ~1 | Spp,
                   ~1 | RecNo,
                   ~1 | Obs_ID),
                 test = "t",
@@ -1602,12 +1618,12 @@ mod_mad <- rma.mv(yi = SMD,
 
 summary(mod_mad)
 
-bubble_plot(mod_mad,
+decline <- bubble_plot(mod_mad,
             mod = "Year",
             group = "RecNo",
             xlab = "Publication year",
             g = TRUE)
-
+decline
 ```
 
 ## All together
@@ -1619,7 +1635,7 @@ dat_short$sqeffectN <- sqrt(dat_short$effectN)
 
 mod_fulle <- rma.mv(yi = SMD, 
                    V = VCVs, 
-                   random = list(~1|FocalSpL , 
+                   random = list(~1|Spp , 
                                  ~1 | RecNo,
                                  ~1 | Obs_ID),
                    mods =  ~ sqeffectN +
@@ -1668,24 +1684,36 @@ slist <- read_excel(here("data", "Species list.xlsx"))
 
 slist %>% mutate_if(is.character, as.factor) ->slist
 
-dat2 <- dat %>% group_by(FocalSpL_corrected) %>% 
+dat2 <- dat %>% group_by(Spp) %>% 
   summarise(N_obs = n())
 
-dat2$FocalSpL_corrected <- gsub("_", " ",dat2$FocalSpL_corrected)
+dat2$Spp <- gsub("_", " ",dat2$Spp)
 
 slist$Species_L <- gsub("_", " ", slist$Species_L)
 
 # TODO - change tip label
 tree$tip.label <-  gsub("_", " ", tree$tip.label)
 
+# getting pics
+
+# adding incons
+filenames <- list.files("images", pattern=".png", full.names=TRUE)
+ldf <- lapply(filenames, readPNG)
+names(ldf) <- substr(filenames, 8, 60)
+ldf <- lapply(ldf, function(x) image_negate(image_read(x)))
+
+#ldf <- map(ldf, ~ image_blank(nrow(.x), ncol(.x), color = "black"))
+
+#ldf <- lapply(ldf, raster)
 
 phy_fig1 <- ggtree(tree, branch.length = "branch.length") 
+
+#phy_fig1
 
 phy_fig2 <- phy_fig1 %<+% slist + geom_tiplab(size=2,fontface = "italic") + 
   geom_tippoint() + 
   xlim_expand(c(0,120), panel = "Tree") #+ guides(color="none")  
 
-phy_fig2
 
 phy_fig3 <- facet_plot(phy_fig2, panel = 'k (effect sizes)', data = dat2, 
 				geom = geom_barh, 
@@ -1700,7 +1728,21 @@ phy_fig3 <- facet_plot(phy_fig2, panel = 'k (effect sizes)', data = dat2,
 
 phy_fig4 <-  facet_widths(phy_fig3, widths = c(0.7, 0.3))
 
-phy_fig4
+phy_fig5 <- ggdraw(phy_fig4) +
+  draw_image(ldf$Anseriformes.png, y = 0.4, x = -0.45, scale = 0.05)  +
+  draw_image(ldf$Charadriiformes.png, y = 0.4, x = -0.4, scale = 0.05) +
+  draw_image(ldf$Columbiformes.png, y = 0.4, x = -0.35, scale = 0.05) +
+  draw_image(ldf$Coraciiformes.png, y = 0.35, x = -0.45, scale = 0.05) +
+  draw_image(ldf$Falconiformes.png, y = 0.35, x = -0.4, scale = 0.05) +
+  draw_image(ldf$Galliformes.png, y = 0.35, x = -0.35, scale = 0.05) +
+  draw_image(ldf$Gruiformes.png, y = 0.3, x = -0.45,scale = 0.05) +
+  draw_image(ldf$Passeriformes.png, y = 0.3, x = -0.4,scale = 0.05) +
+  draw_image(ldf$Columbiformes.png, y = 0.3, x = -0.35, scale = 0.05) +
+  draw_image(ldf$Piciformes.png, y = 0.25, x = -0.45,scale = 0.05) +
+  draw_image(ldf$Procellariiformes.png, y = 0.25, x = -0.4, scale = 0.05) +
+  draw_image(ldf$Strigiformes.png, y = 0.25, x = -0.35,scale = 0.05) 
+  
+phy_fig5
 
 # colouring
 # phy_fig2 <- phy_fig1 %<+% slist + geom_tiplab(aes(color  = Family),size=3,fontface = "italic") + geom_tippoint(aes(color=Family)) + xlim_expand(c(0,120), panel = "Tree") + guides(color="none")  
@@ -1722,12 +1764,6 @@ phy_fig4
 # 
 # phy_fig4
 
-```
-
-
-## Figure: world map
-
-```{r}
 # reading in country data
 
 clist <- read_excel(here("data", "StudyCountries.xlsx"))
@@ -1782,19 +1818,55 @@ map_fig <- fullmap %>%
                       limits = c(1, 30),
       guide = guide_colorbar(direction = "vertical.")) +
   guides(fill = guide_colourbar(barwidth = unit(15, units = "mm"), barheight = unit(20, units = "mm")))  +
-  theme(legend.position = c(0.05, 0))
+  theme(legend.position = c(0.05, 0.2))
 
 
-map_fig
+#map_fig
 
-phy_fig4 / map_fig +  plot_annotation(tag_levels = 'A') + plot_layout(heights = c(2.5,1.2))
+phy_fig5 / map_fig +  plot_annotation(tag_levels = 'A') + plot_layout(heights = c(2.5,1.))
 
 ```
-
 
 ## Figure: main and different modality
 
 ```{r}
+
+#cbpl <- c("#88CCEE", "#CC6677", "#DDCC77", "#117733", "#332288", "#AA4499", "#44AA99", "#999933", "#882255", "#661100", "#6699CC", "#888888", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+
+# merging results of different models
+
+main <- mod_results(mod_ma, group = "RecNo")
+treat5 <- mod_results(mod_trt, mod = "Treat_mod", group = "RecNo")
+
+combined <- submerge(treat5, main)
+
+combo <- orchard_plot(combined,
+             #mod = "Type",
+             group = "RecNo", 
+             xlab = "Standardised mean differnece (SMD)",
+             branch.size = 3) +
+          scale_colour_manual(values = rep("grey20",7)) +
+          scale_fill_manual(values = c("#117733", "#332288", "#AA4499", "#88CCEE", "#CC6677", "#DDCC77", "#999999"), ) 
+          
+homo_mod <- orchard_plot(mod_trt_1, 
+             mod = "Treat_mod",
+             group = "RecNo", 
+             xlab = "Standardised mean differnece (SMD)",
+             branch.size = 3,
+             legend.pos = "none") + 
+          scale_colour_manual(values = rep("grey20",3))
+
+hetero_mod <- orchard_plot(mod_trt_2, 
+             mod = "Treat_mod",
+             group = "RecNo", 
+             xlab = "Standardised mean differnece (SMD)",
+             branch.size = 3,
+			       legend.pos = "none") + 
+          scale_colour_manual(values = rep("grey20",3))
+
+patch <- combo | (homo_mod / hetero_mod)
+
+patch +  plot_annotation(tag_levels = 'A') 
 
 ```
 
@@ -1802,6 +1874,59 @@ phy_fig4 / map_fig +  plot_annotation(tag_levels = 'A') + plot_layout(heights = 
 
 ```{r}
 
+#cbpl <- c("#88CCEE", "#CC6677", "#DDCC77", "#117733", "#332288", "#AA4499", "#44AA99", "#999933", "#882255", "#661100", "#6699CC", "#888888", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
+
+ptype2 <- ptype2 +
+          scale_colour_manual(values = rep("grey20",3))
+
+bub_dr <- bubble_plot(mod_dur,
+             mod = "ln_duration",
+             group = "RecNo",
+             xlab = "log(duration in days)",
+             ylab = "Standardised mean differnece (SMD)",
+             g = TRUE,
+             legend.pos = "bottom.left") +
+    #ylim(-10, 10) +
+    geom_point(data = dat,
+    aes(x = ln_duration, y = SMD,
+    color = Type,
+    fill = Type,
+    size = 1/sqrt(Vd)), alpha = 0.6,
+    shape = 21) +
+    scale_color_discrete() + 
+    scale_shape_manual(values = c(21, 22, 23)) +
+    scale_fill_manual(values = c("#88CCEE", "#CC6677", "#DDCC77")) +
+    scale_colour_manual(values = rep("grey20",3)) +
+    guides(fill = "legend", size = "none", colour = "none")
+    
+patch2 <- ptype2 / bub_dr
+
+patch2 +  plot_annotation(tag_levels = 'A') 
+```
+
+## Figure: publication bias
+
+```{r}
+pdf(NULL)
+dev.control(displaylist="enable")
+par(mar=c(4,4,0.1,0) + 0.1)
+funnel(mod_ma2, 
+       yaxis="seinv",
+       # = "rstudent",
+       pch = 1,
+       cex = 0.7,
+       #bg = "white",
+       xlab = "Standarized residuals",
+       ylab = "Precision (inverse of SE)",
+       ylim = c(0.001, 16),
+       xlim = c(-10,15),
+       digits=c(0,1)
+       )
+fun <- recordPlot()
+invisible(dev.off())	   
+
+pub_b <- ggdraw(fun)  / plot_grid(small) / plot_grid(decline)
+pub_b +  plot_annotation(tag_levels = 'A') 
 ```
 
 
