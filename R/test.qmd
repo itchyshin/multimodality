@@ -698,8 +698,6 @@ ggplot(tab,
 ## All random effects (one tree)
 
 ```{r}
-##| warning: false
-
 
 # VCV matrix
 
@@ -1826,7 +1824,7 @@ map_fig <- fullmap %>%
 phy_fig5 / map_fig +  plot_annotation(tag_levels = 'A') + plot_layout(heights = c(2.5,1.0))
 
 ```
-![](figs/phy_map.png)
+![](../figs/phy_map.png)
 
 ## Figure: main and different modality
 
