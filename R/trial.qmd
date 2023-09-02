@@ -1,0 +1,556 @@
+---
+title: "**Integration of multimodal cues does not alter mean but reduces variance in avian responses to predators: a systematic review and meta-analysis**"
+subtitle: "**Supplmentary Material**"
+author: "**Kim + Shinichi et al.**"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    toc-location: left
+    toc-depth: 3
+    toc-title: "**Table of Contents**"
+    output-file: "index.html"
+    theme: simplex
+    embed-resources: true
+    code-fold: true
+    code-tools: true
+    number-sections: true
+    #bibliography: ./bib/ref.bib
+    fontsize: "12"
+    max-width: "10"
+    code-overflow: wrap
+crossref: 
+  fig-title: Figure     # (default is "Figure")
+  tbl-title: Table     # (default is "Table")
+  title-delim: —     # (default is ":")
+  fig-prefix: Fig.   # (default is "Figure")
+  tbl-prefix: Tab.    # (default is "Table")
+editor_options: 
+  chunk_output_type: console
+execute:
+  warning: false
+  message: false
+  tidy: true
+  #cache: true
+---
+
+## Setting up
+
+### Loading packages
+
+```{r}
+# install.packages("pacman")
+# pacman::p_load(devtools, tidyverse, metafor, patchwork, R.rsp, emmeans)
+# devtools::install_github("daniel1noble/orchaRd", force = TRUE)
+
+# if (!require("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("ggtree")
+
+library(pacman)
+
+p_load(
+    tidyverse,
+    here,
+    #lme4,
+    orchaRd,
+    metafor,
+    patchwork,
+    alluvial,
+    ggalluvial,
+    ape,
+    #easyalluvial,
+    clubSandwich,
+    emmeans,
+    MuMIn,
+    kableExtra,
+    pander,
+    parallel,
+    miWQS, # for Rubin's rules
+    ggtree,
+    ggstance,
+    readxl,
+    maps,
+    ggthemes,
+    cowplot,
+    png,
+    grid,
+    raster,
+    magick,
+    purrr
+)
+
+# making metafor talk to MuMIn
+eval(metafor:::.MuMIn)
+```
+
+### Getting data loaded
+
+```{r}
+dat_full <- read.csv(here("data/dat_19_07_2023_spp.csv"))
+meta_dat <- read.csv(here("data/Meta-data.csv"))
+
+# we can do 50 different trees as in 
+# https://academic.oup.com/sysbio/article/68/4/632/5267840
+tree_50 <- readRDS(here("tree/tree_50.RDS"))
+
+tree <- tree_50[[1]]
+#plot(tree)
+# turning it into a correlation matrix
+cor_tree <- vcv(tree, corr=T)
+
+```
+
+### Raw data and meta-data
+
+```{r}
+# making a scrollable table
+kable(dat_full, "html", escape = FALSE) %>% kable_styling("striped", position = "left", full_width = TRUE) %>% 
+  column_spec(66, width_min = "5in") %>% 
+  scroll_box(width = "100%", 
+    height = "500px")
+
+# meta-data for it
+kable(meta_dat, "html", escape = FALSE) %>% kable_styling("striped", position = "left", full_width = TRUE) %>% 
+   column_spec(2, width_min = "3in") %>% 
+   column_spec(3, width_min = "6in") %>% 
+  scroll_box(width = "100%", 
+    height = "500px")
+```
+### Custom functions
+
+We have 5 custom functions named : `cont_gen()`,`get_pred1()`, `get_pred2()`, `mr_results()`, and `all_models()`, all of which are used later (see below for their functionality) and the code is included here.
+
+
+```{r}
+# custom functions
+
+#' Title: Contrast name generator
+#'
+#' @param name: a vector of character strings
+cont_gen <- function(name) {
+  combination <- combn(name, 2)
+  name_dat <- t(combination)
+  names <- paste(name_dat[, 1], name_dat[, 2], sep = "-")
+  return(names)
+}
+
+#' @title get_pred1: intercept-less model
+#' @description Function to get CIs (confidence intervals) and PIs (prediction intervals) from rma objects (metafor)
+#' @param model: rma.mv object 
+#' @param mod: the name of a moderator 
+get_pred1 <- function (model, mod = " ") {
+  name <- firstup(as.character(stringr::str_replace(row.names(model$beta), mod, "")))
+  len <- length(name)
+  
+   if (len != 1) {
+        newdata <- diag(len)
+        pred <- metafor::predict.rma(model, 
+                                     newmods = newdata,
+                                     tau2.levels = 1:len)
+    }
+    else {
+        pred <- metafor::predict.rma(model)
+  }
+  estimate <- pred$pred
+  lowerCL <- pred$ci.lb
+  upperCL <- pred$ci.ub 
+  lowerPR <- pred$cr.lb
+  upperPR <- pred$cr.ub 
+  
+  table <- tibble(name = factor(name, levels = name, labels = name), estimate = estimate,
+                  lowerCL = lowerCL, upperCL = upperCL,
+                  pval = model$pval,
+                  lowerPR = lowerPR, upperPR = upperPR)
+}
+
+#' @title get_pred2: normal model
+#' @description Function to get CIs (confidence intervals) and PIs (prediction intervals) from rma objects (metafor)
+#' @param model: rma.mv object 
+#' @param mod: the name of a moderator 
+get_pred2 <- function (model, mod = " ") {
+  name <- as.factor(str_replace(row.names(model$beta), 
+                                paste0("relevel", "\\(", mod,", ref = name",
+                                       "\\)"),""))
+  len <- length(name)
+  
+  if(len != 1){
+  newdata <- diag(len)
+  pred <- predict.rma(model, intercept = FALSE, newmods = newdata[,-1])
+  }
+  else {
+    pred <- predict.rma(model)
+  }
+  estimate <- pred$pred
+  lowerCL <- pred$ci.lb
+  upperCL <- pred$ci.ub 
+  lowerPR <- pred$cr.lb
+  upperPR <- pred$cr.ub 
+  
+  table <- tibble(name = factor(name, levels = name, labels = name), estimate = estimate,
+                  lowerCL = lowerCL, upperCL = upperCL,
+                  pval = model$pval,
+                  lowerPR = lowerPR, upperPR = upperPR)
+}
+
+#' @title mr_results
+#' @description Function to put results of meta-regression and its contrasts
+#' @param res1: data frame 1
+#' @param res1: data frame 2
+mr_results <- function(res1, res2) {
+  restuls <-tibble(
+    `Fixed effect` = c(as.character(res1$name), cont_gen(res1$name)),
+    Estimate = c(res1$estimate, res2$estimate),
+    `Lower CI [0.025]` = c(res1$lowerCL, res2$lowerCL),
+    `Upper CI  [0.975]` = c(res1$upperCL, res2$upperCL),
+    `P value` = c(res1$pval, res2$pval),
+    `Lower PI [0.025]` = c(res1$lowerPR, res2$lowerPR),
+    `Upper PI  [0.975]` = c(res1$upperPR, res2$upperPR),
+  )
+}
+
+
+#' @title all_models
+#' @description Function to take all possible models and get their results
+#' @param model: intercept-less model
+#' @param mod: the name of a moderator 
+
+all_models <- function(model, mod = " ", type = "homo") {
+  
+  # getting the level names out
+  level_names <- levels(factor(model$data[[mod]]))
+  dat2 <- model$data
+  mod <- mod
+
+  VCV1 <- vcalc(vi = dat2$Vd,
+             cluster = dat2$SubjectID,
+             rho = 0.5)
+  #model$data[[mod]] <- factor(model$data[[mod]], ordered = FALSE)
+  # meta-regression: contrasts 
+  # helper function to run metafor meta-regression
+  run_rma1 <- function(name) {
+    rma.mv(yi = SMD, 
+         V = VCV1, 
+         mods = ~ relevel(dat2[[mod]], ref = name), 
+         random = list(~1 | Spp,
+                             ~1 | RecNo,
+                             ~1 | Obs_ID),
+               test = "t",
+               method = "REML",
+               sparse = TRUE,
+               data = dat2)
+   }
+
+    run_rma2 <- function(name) {
+    rma.mv(yi = SMD,
+         V = VCV1,
+         mods = ~ relevel(dat2[[mod]], ref = name),
+         random = list(~1 | Spp,
+                             ~1 | RecNo,
+                             formula(paste("~", mod, "| Obs_ID"))),
+               test = "t",
+               method = "REML",
+               sparse = TRUE,
+               data = dat2)
+   }
+
+  # results of meta-regression including all contrast results; taking the last level out ([-length(level_names)])
+  # this does not work for hetero model?
+  if (type == "homo"){
+  model_all <- purrr::map(level_names[-length(level_names)], run_rma1)
+  } else {
+  model_all <- purrr::map(level_names[-length(level_names)], run_rma2)
+  }
+  
+  # getting estimates from intercept-less models (means for all the groups)
+  res1 <- get_pred1(model, mod = mod)
+  
+  # getting estiamtes from all contrast models
+  res2_pre <- purrr::map(model_all, ~ get_pred2(.x, mod = mod))
+  
+  # a list of the numbers to take out unnecessary contrasts
+  contra_list <- Map(seq, from=1, to=1:(length(level_names) - 1))
+  res2 <- map2_dfr(res2_pre, contra_list, ~.x[-(.y), ]) 
+  # creating a table
+  res_tab <- mr_results(res1, res2) %>% 
+  kable("html",  digits = 3) %>%
+  kable_styling("striped", position = "left") %>%
+  scroll_box(width = "100%")
+  
+  # results
+  res_tab
+
+}
+
+# test 
+#all_models(mod1, mod = "Treat_mod")
+#all_models(mod1s, mod = "Treat_mod")
+#all_models(mod1s2, mod = "Treat_mod")
+```
+
+### Preparing data set
+
+```{r}
+# function for calculating variance
+Vd_func <- function(d, n1, n2, design, r = 0.5){
+  # independent design
+  if(design == "among"){
+    var <- (n1 + n2) / (n1*n2) + d^2 / (2 * (n1 + n2 - 2)) # variance
+  } else { # dependent design
+    var <- 2*(1-r) / n1 + d^2 / (2*(n1 - 1)) # variance
+  }
+  var # return variance
+}
+
+# getting Hedges' g - get small size bias corrected effect size
+dat_full$SMD <- dat_full$d / (1 - 3/(4 * (dat_full$NTreat + dat_full$Ncontrol) - 9))
+
+# flipping d 
+dat_full$SMD <- dat_full$d*dat_full$Direction*dat_full$PredictedDirection
+
+
+# calucating Vd
+dat_full$Vd <- with(dat_full, pmap_dbl(list(SMD, NTreat, Ncontrol, Design), Vd_func))
+
+
+# extra useful function
+# function for getting mean and sd from median, quartiles and sample size
+# get_mean_sd <- function(median, q1, q3, n){
+#   sd <- (q3 - q1) / (2 * (qnorm((0.75 * n - 0.125) / (n + 0.25)))) # sd
+#   mean <- (median + q1 + q3)/3 # mean
+#   c(mean, sd)
+# }
+
+
+# observation id
+dat_full$Obs_ID <- 1:nrow(dat_full)
+#dat_full$Phylo <- gsub(" ", "_", dat_full$FocalSpL)
+
+# filtering very large variance and also very small sample size
+dat_int <- dat_full %>% filter(Vd < 10 & Ncontrol > 2 & NTreat > 2)
+
+#dim(dat_full)
+#dim(dat_int)
+
+
+# sorting out modality stuff
+# creat - 1,2,3 modality - also easier classification A, O, V (AOV = L) 
+
+dat_int %>% mutate(Treat_mod = case_when(Treatment == "A" ~ "A",
+                                          Treatment == "AV" ~ "AV",
+                                          Treatment == "AVG" ~ "AV",
+                                          Treatment == "AVM" ~ "AV",
+                                          Treatment == "L" ~ "AVO",
+                                          Treatment == "O" ~ "O",
+                                          Treatment == "OV" ~ "OV",
+                                          Treatment == "V" ~ "V",
+                                          Treatment == "VG" ~ "V",
+                                          Treatment == "VM" ~ "V",
+                                          Treatment == "VP" ~ "V"),
+                    # into how many
+                    Treat_No = case_when(Treatment == "A" ~ 1,
+                                         Treatment == "AV" ~ 2,
+                                         Treatment == "AVG" ~ 2,
+                                         Treatment == "AVM" ~ 2,
+                                         Treatment == "L" ~ 3,
+                                         Treatment == "O" ~ 1,
+                                         Treatment == "OV" ~ 2,
+                                         Treatment == "V" ~ 1,
+                                         Treatment == "VG" ~ 1,
+                                         Treatment == "VM" ~ 1,
+                                         Treatment == "VP" ~ 1),
+                    # des it have some add-ons
+                    Add_on = case_when(Treatment == "A" ~ "No",
+                                         Treatment == "AV" ~ "No",
+                                         Treatment == "AVG" ~ "Yes",
+                                         Treatment == "AVM" ~ "Yes",
+                                         Treatment == "L" ~ "No",
+                                         Treatment == "O" ~ "No",
+                                         Treatment == "OV" ~ "No",
+                                         Treatment == "V" ~ "No",
+                                         Treatment == "VG" ~ "Yes",
+                                         Treatment == "VM" ~ "Yes",
+                                         Treatment == "VP" ~ "Yes"),
+
+                      ) -> dat_int2
+
+
+
+dat <- dat_int2 %>%
+  mutate_if(is.character, as.factor) %>% 
+  mutate(Spp = FocalSpL_corrected,
+         Phylo = FocalSpL_corrected) %>% 
+  dplyr::select(RecNo, Year, PredGuild, PredTo, Setting, 
+         Season, Design, duration_days, ResponsePeriod, 
+         ControlType, Sex, Age, NTreat, Ncontrol, 
+         SubjectID, Type, Category, Spp, Phylo,
+         SMD, Vd, Obs_ID, Treat_mod, Treat_No, Add_on) 
+
+
+# creating data just for A, V, and AV 
+dat_short <- dat %>% filter(Treat_mod == "A" | Treat_mod == "V" | Treat_mod == "AV")
+
+# for add-on, we only need V and AV
+dat_short_add <- dat %>% filter(Treat_mod == "AV" | Treat_mod == "V")
+
+
+# reordering factors for better visualization
+
+dat$Treat_mod <- factor(dat$Treat_mod, levels = rev(c("A", "V", "AV", "O", "OV", "AVO")))
+dat$Type <- factor(dat$Type, levels = rev(c("Behaviour", "LifeHistory", "Physiology")))
+
+```
+
+## Figure: phylogeny and world map
+
+```{r}
+##| eval: false
+
+slist <- read_excel(here("data", "Species list.xlsx"))
+
+slist %>% mutate_if(is.character, as.factor) ->slist
+
+dat2 <- dat %>% group_by(Spp) %>% 
+  summarise(N_obs = n())
+
+dat2$Spp <- gsub("_", " ",dat2$Spp)
+
+slist$Species_L <- gsub("_", " ", slist$Species_L)
+
+# TODO - change tip label
+tree$tip.label <-  gsub("_", " ", tree$tip.label)
+
+phy_fig1 <- ggtree(tree, branch.length = "branch.length") 
+
+#phy_fig1
+
+phy_fig2 <- phy_fig1 %<+% slist + geom_tiplab(size=2,fontface = "italic") + 
+  geom_tippoint() + 
+  xlim_expand(c(0,120), panel = "Tree") #+ guides(color="none")  
+
+
+phy_fig3 <- facet_plot(phy_fig2, panel = 'k (effect sizes)', data = dat2, 
+				geom = geom_barh, 
+				mapping = aes(x = N_obs), alpha = 0.7, stat='identity') + 
+        
+  # geom_facet(panel = "Estimates of mean ratio (lnRR)", data = re.spp.lnRR2,
+  #          geom = geom_barh, 
+  #          mapping =  aes(x = N_obs, fill=Family, color=Family), alpha = 0.4, stat='identity') + 
+  
+        guides(fill="none",color="none") + 
+        theme_tree2() + theme(strip.background = element_rect(fill = "white"))
+
+phy_fig4 <-  facet_widths(phy_fig3, widths = c(0.7, 0.3))
+
+# getting pics
+
+# adding incons
+filenames <- list.files("images2", pattern=".png", full.names=TRUE)
+#ldf <- purrr::map(filenames,~readPNG(.x))
+#names(ldf) <- substr(filenames, 9, 60)
+#ldf <- purrr::map(ldf, ~image_negate(image_read(.x)))
+#ldf <- map(ldf, ~ image_blank(nrow(.x), ncol(.x), color = "black"))
+#ldf <- lapply(ldf, raster)
+#names_ldf <- names(ldf)
+
+#mapply(image_write, ldf, paste0("images2","/", names_ldf)) 
+
+phy_fig5 <- ggdraw(phy_fig4) +
+  draw_image(filenames[1], y = 0.4, x = -0.45, scale = 0.05)  +
+  draw_image(filenames[2], y = 0.4, x = -0.4, scale = 0.05) #+
+  # draw_image(ldf$Columbiformes.png, y = 0.4, x = -0.35, scale = 0.05) +
+  # draw_image(ldf$Coraciiformes.png, y = 0.35, x = -0.45, scale = 0.05) +
+  # draw_image(ldf$Falconiformes.png, y = 0.35, x = -0.4, scale = 0.05) +
+  # draw_image(ldf$Galliformes.png, y = 0.35, x = -0.35, scale = 0.05) +
+  # draw_image(ldf$Gruiformes.png, y = 0.3, x = -0.45,scale = 0.05) +
+  # draw_image(ldf$Passeriformes.png, y = 0.3, x = -0.4,scale = 0.05) +
+  # draw_image(ldf$Piciformes.png, y = 0.3, x = -0.35, scale = 0.05) +
+  # draw_image(ldf$Procellariiformes.png, y = 0.25, x = -0.45,scale = 0.05) +
+  # draw_image(ldf$Strigiformes.png, y = 0.25, x = -0.4, scale = 0.05) #+
+  #draw_image(ldf$Strigiformes.png, y = 0.25, x = -0.35,scale = 0.05) 
+  
+#phy_fig5
+
+# colouring
+# phy_fig2 <- phy_fig1 %<+% slist + geom_tiplab(aes(color  = Family),size=3,fontface = "italic") + geom_tippoint(aes(color=Family)) + xlim_expand(c(0,120), panel = "Tree") + guides(color="none")  
+# 
+# phy_fig2
+# 
+# phy_fig3 <- facet_plot(phy_fig2, panel = 'k (effect sizes)', data = dat2, 
+# 				geom = geom_barh, 
+# 				mapping = aes(x = N_obs, fill=Family, color=Family), alpha = 0.4, stat='identity') + 
+#         
+#   # geom_facet(panel = "Estimates of mean ratio (lnRR)", data = re.spp.lnRR2,
+#   #          geom = geom_barh, 
+#   #          mapping =  aes(x = N_obs, fill=Family, color=Family), alpha = 0.4, stat='identity') + 
+#   
+#         guides(fill="none",color="none") + 
+#         theme_tree2() + theme(strip.background = element_rect(fill = "white"))
+# 
+# phy_fig4 <-  facet_widths(phy_fig3, widths = c(0.7, 0.3))
+# 
+# phy_fig4
+
+# reading in country data
+
+clist <- read_excel(here("data", "StudyCountries.xlsx"))
+
+#clist %>% mutate_if(is.character, as.factor) -> clist
+
+cdat <- clist %>% group_by(StudyCountry) %>% 
+  summarise(N_obs = n())
+
+cdat$region <- cdat$StudyCountry
+cdat$n <- cdat$N_obs
+cdat <- cdat[, 3:4]
+#cdat$region <- as()
+
+# need to tell 
+cdat$region[cdat$region == "England"] <- "UK" 
+cdat$region[cdat$region == "Scotland"] <- "UK" 
+cdat$region[cdat$region == "Kerguelen Islands"] <- "France"
+cdat$region[cdat$region == "Republic of Korea"] <- "South Korea"
+
+#https://www.riinu.me/2022/02/world-map-ggplot2/
+
+world_map <- map_data("world") %>% 
+  filter(! long > 180) #remove countries with longitude >180 to make equal projection-like map without artifacts
+
+#which(is.na(match(cdat$region, world_map$region)) == T)
+#cdat$region[which(is.na(match(cdat$region, world_map$region)) == T)]
+
+## colour all regions on the map:
+
+emptymap <- world_map %>% group_by(region) %>% 
+  summarise(N_obs = n(), long = mean(long), lat = mean(lat))
+
+emptymap$n <- 0
+
+# emptymap <- tibble(region = unique(world_map$region), 
+#                    n = rep(0,length(unique(world_map$region)))) #create table with all counts as 0
+fullmap <- left_join(emptymap, cdat, by = "region") #join with actual counts table
+fullmap$n <- fullmap$n.x + fullmap$n.y # make new column for fixed counts
+fullmap$n[is.na(fullmap$n)] <- 0 #change NA to 0 for regions with no counts
+
+map_fig <- fullmap %>% 
+  ggplot(aes(fill = n, map_id = region)) +
+  geom_map(map = world_map) +
+  expand_limits(x = world_map$long, y = c(-50, 80)) +
+  #coord_map("moll") +
+  theme_map() + 
+  theme(legend.position="right") +
+  #geom_text(aes(x = long, y = lat, label = n), size = 3, color = "black") +
+  scale_fill_gradient(low = "#FEE08B", high = "#D53E4F",
+                      #low = "white", high = "red",
+                      limits = c(1, 30),
+      guide = guide_colorbar(direction = "vertical.")) +
+  guides(fill = guide_colourbar(barwidth = unit(15, units = "mm"), barheight = unit(20, units = "mm")))  +
+  theme(legend.position = c(0.05, 0.2))
+
+
+#map_fig
+
+phy_fig5 / map_fig +  plot_annotation(tag_levels = 'A') + plot_layout(heights = c(2.5,1.0))
+
+```

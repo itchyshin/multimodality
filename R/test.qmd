@@ -31,7 +31,7 @@ execute:
   warning: false
   message: false
   tidy: true
-  cache: true
+  #cache: true
 ---
 
 ## Setting up
@@ -77,7 +77,8 @@ p_load(
     png,
     grid,
     raster,
-    magick
+    magick,
+    purrr
 )
 
 # making metafor talk to MuMIn
@@ -257,16 +258,16 @@ all_models <- function(model, mod = " ", type = "homo") {
   # results of meta-regression including all contrast results; taking the last level out ([-length(level_names)])
   # this does not work for hetero model?
   if (type == "homo"){
-  model_all <- map(level_names[-length(level_names)], run_rma1)
+  model_all <- purrr::map(level_names[-length(level_names)], run_rma1)
   } else {
-  model_all <- map(level_names[-length(level_names)], run_rma2)
+  model_all <- purrr::map(level_names[-length(level_names)], run_rma2)
   }
   
   # getting estimates from intercept-less models (means for all the groups)
   res1 <- get_pred1(model, mod = mod)
   
   # getting estiamtes from all contrast models
-  res2_pre <- map(model_all, ~ get_pred2(.x, mod = mod))
+  res2_pre <- purrr::map(model_all, ~ get_pred2(.x, mod = mod))
   
   # a list of the numbers to take out unnecessary contrasts
   contra_list <- Map(seq, from=1, to=1:(length(level_names) - 1))
@@ -380,11 +381,11 @@ dat <- dat_int2 %>%
   mutate_if(is.character, as.factor) %>% 
   mutate(Spp = FocalSpL_corrected,
          Phylo = FocalSpL_corrected) %>% 
-  select(RecNo, Year, PredGuild, PredTo, Setting, 
+  dplyr::select(RecNo, Year, PredGuild, PredTo, Setting, 
          Season, Design, duration_days, ResponsePeriod, 
          ControlType, Sex, Age, NTreat, Ncontrol, 
          SubjectID, Type, Category, Spp, Phylo,
-         SMD, Vd, Obs_ID, Treat_mod, Treat_No, Add_on) #TODO
+         SMD, Vd, Obs_ID, Treat_mod, Treat_No, Add_on) 
 
 
 # creating data just for A, V, and AV 
@@ -453,14 +454,14 @@ dat_short %>% mutate(TDuration = case_when(duration_days < 1 ~ "< 1 day",
                                           duration_days >= 1 ~ "> 1 day")) -> dat_short
 
 # reformatting data
-dat_short %>% group_by(Treat_mod, TDration) %>%
+dat_short %>% group_by(Treat_mod, TDuration) %>%
   summarise(n = n()) -> tab
 
 # using ggaruvial
 ggplot(tab,
        aes(y = n,
            axis1 = Treat_mod,
-           axis2 = TDration)) +
+           axis2 = TDuration)) +
   geom_alluvium(aes(fill = Treat_mod)) +
   geom_stratum(alpha = 0.5) +
   geom_text(stat = "stratum", size = 4, aes(label = after_stat(stratum))) +
@@ -711,7 +712,7 @@ mod_ma <- rma.mv(yi = SMD,
        random = list(~1 | Phylo,
                      ~1 | Spp,
                      ~1 | RecNo,
-                     ~1 | SubjectID, # Incorporated as VCV
+                     ~1 | SubjectID,
                      ~1 | Obs_ID),
       R = list(Phylo = cor_tree),
        test = "t",
@@ -736,8 +737,10 @@ orchard_plot(mod_ma,
 ## All random effects (50 trees)
 
 ```{r}
-##| eval: false
+#| eval: false
+
 # function to run the meta-analysis above
+
 model_run <- function(cor_tree = vcv_tree){
   model <- rma.mv(yi = SMD,
        V = VCV, 
@@ -755,7 +758,7 @@ model_run <- function(cor_tree = vcv_tree){
 }
 
 # creating 50 correlation matrixes from 50 different trees
-vcv_tree_50 <- map(tree_50, ~vcv(.x, corr = TRUE))
+vcv_tree_50 <- lapply(tree_50, function(x) vcv(x, corr = TRUE))
 
 # running 50 meta-analyses with 50 different trees
 # one can change mc.cores according to one's computer
@@ -875,7 +878,6 @@ orchard_plot(mod_trt_1,
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3)
 
-homo_mod
 # result table (get all the constrasts)
 all_models(mod_trt_1, mod = "Treat_mod")
 
@@ -1676,9 +1678,10 @@ bubble_plot(mod_fulle, group = "RecNo", mod = "Year", xlab = "ln(duration in day
 
 ::: {.panel-tabset}
 
-## Figure: phylogeny + world map
+## Figure: phylogeny and world map
 
 ```{r}
+#| eval: false
 
 slist <- read_excel(here("data", "Species list.xlsx"))
 
@@ -1691,20 +1694,8 @@ dat2$Spp <- gsub("_", " ",dat2$Spp)
 
 slist$Species_L <- gsub("_", " ", slist$Species_L)
 
-# TODO - change tip label
+# change tip label
 tree$tip.label <-  gsub("_", " ", tree$tip.label)
-
-# getting pics
-
-# adding incons
-filenames <- list.files("images", pattern=".png", full.names=TRUE)
-ldf <- lapply(filenames, readPNG)
-names(ldf) <- substr(filenames, 8, 60)
-ldf <- lapply(ldf, function(x) image_negate(image_read(x)))
-
-#ldf <- map(ldf, ~ image_blank(nrow(.x), ncol(.x), color = "black"))
-
-#ldf <- lapply(ldf, raster)
 
 phy_fig1 <- ggtree(tree, branch.length = "branch.length") 
 
@@ -1728,6 +1719,15 @@ phy_fig3 <- facet_plot(phy_fig2, panel = 'k (effect sizes)', data = dat2,
 
 phy_fig4 <-  facet_widths(phy_fig3, widths = c(0.7, 0.3))
 
+# adding incons
+filenames <- list.files("images", pattern=".png", full.names=TRUE)
+ldf <- purrr::map(filenames,~readPNG(.x))
+names(ldf) <- substr(filenames, 8, 60)
+ldf <- purrr::map(ldf, ~image_negate(image_read(.x)))
+#ldf <- map(ldf, ~ image_blank(nrow(.x), ncol(.x), color = "black"))
+#ldf <- lapply(ldf, raster)
+
+# this works but does not knit
 phy_fig5 <- ggdraw(phy_fig4) +
   draw_image(ldf$Anseriformes.png, y = 0.4, x = -0.45, scale = 0.05)  +
   draw_image(ldf$Charadriiformes.png, y = 0.4, x = -0.4, scale = 0.05) +
@@ -1737,12 +1737,12 @@ phy_fig5 <- ggdraw(phy_fig4) +
   draw_image(ldf$Galliformes.png, y = 0.35, x = -0.35, scale = 0.05) +
   draw_image(ldf$Gruiformes.png, y = 0.3, x = -0.45,scale = 0.05) +
   draw_image(ldf$Passeriformes.png, y = 0.3, x = -0.4,scale = 0.05) +
-  draw_image(ldf$Columbiformes.png, y = 0.3, x = -0.35, scale = 0.05) +
-  draw_image(ldf$Piciformes.png, y = 0.25, x = -0.45,scale = 0.05) +
-  draw_image(ldf$Procellariiformes.png, y = 0.25, x = -0.4, scale = 0.05) +
-  draw_image(ldf$Strigiformes.png, y = 0.25, x = -0.35,scale = 0.05) 
+  draw_image(ldf$Piciformes.png, y = 0.3, x = -0.35, scale = 0.05) +
+  draw_image(ldf$Procellariiformes.png, y = 0.25, x = -0.45,scale = 0.05) +
+  draw_image(ldf$Strigiformes.png, y = 0.25, x = -0.4, scale = 0.05) #+
+  #draw_image(ldf$Strigiformes.png, y = 0.25, x = -0.35,scale = 0.05) 
   
-phy_fig5
+#phy_fig5
 
 # colouring
 # phy_fig2 <- phy_fig1 %<+% slist + geom_tiplab(aes(color  = Family),size=3,fontface = "italic") + geom_tippoint(aes(color=Family)) + xlim_expand(c(0,120), panel = "Tree") + guides(color="none")  
@@ -1823,9 +1823,10 @@ map_fig <- fullmap %>%
 
 #map_fig
 
-phy_fig5 / map_fig +  plot_annotation(tag_levels = 'A') + plot_layout(heights = c(2.5,1.))
+phy_fig5 / map_fig +  plot_annotation(tag_levels = 'A') + plot_layout(heights = c(2.5,1.0))
 
 ```
+![](figs/phy_map.png)
 
 ## Figure: main and different modality
 
