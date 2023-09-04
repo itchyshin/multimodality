@@ -381,7 +381,7 @@ dat <- dat_int2 %>%
   mutate_if(is.character, as.factor) %>% 
   mutate(Spp = FocalSpL_corrected,
          Phylo = FocalSpL_corrected) %>% 
-  dplyr::select(RecNo, Year, PredGuild, PredTo, Setting, 
+  dplyr::select(RecNo, Author, Year, PredGuild, PredTo, Setting, 
          Season, Design, duration_days, ResponsePeriod, 
          ControlType, Sex, Age, NTreat, Ncontrol, 
          SubjectID, Type, Category, Spp, Phylo,
@@ -1595,6 +1595,7 @@ small <- bubble_plot(mod_mae,
             mod = "sqeffectN",
             group = "RecNo",
             xlab = "Effective N",
+            ylab = "Standardized mean difference (SMD)",
             g = TRUE)
 
 small
@@ -1622,6 +1623,7 @@ decline <- bubble_plot(mod_mad,
             mod = "Year",
             group = "RecNo",
             xlab = "Publication year",
+            ylab = "SMD (effect size)",
             g = TRUE)
 decline
 ```
@@ -1662,9 +1664,73 @@ bubble_plot(mod_fulle, group = "RecNo", mod = "Year", xlab = "ln(duration in day
 ## Leave-1study-out (sensitivity analysis)
 
 ```{r}
-# TODO
+#| eval: false
+
+dat <- dat %>%
+    mutate(leave_out = paste(Author, Year, sep = "_"))
+dat$leave_out <- as.factor(dat$leave_out)
 
 
+LeaveOneOut_effectsize <- list()
+for (i in 1:length(levels(dat$leave_out))) {
+    temp_dat <- dat %>%
+        filter(leave_out != levels(dat$leave_out)[i])
+
+    VCV_leaveout <- vcalc(vi = temp_dat$Vd, cluster = temp_dat$SubjectID, rho = 0.5)
+
+    LeaveOneOut_effectsize[[i]] <-  rma.mv(yi = SMD,
+       V = VCV_leaveout, 
+       random = list(#~1 | Phylo,
+                     ~1 | Spp,
+                     ~1 | RecNo,
+                     #~1 | SubjectID,
+                     ~1 | Obs_ID),
+       R = list(Phylo = cor_tree),
+       test = "t",
+       method = "REML", 
+       sparse = TRUE,
+       data = temp_dat[temp_dat$leave_out != levels(temp_dat$leave_out)[i], ])
+}
+
+# writing function for extracting est, ci.lb, and ci.ub from all models
+est.func <- function(model) {
+    df <- data.frame(est = model$b, lower = model$ci.lb, upper = model$ci.ub)
+    return(df)
+}
+
+# using dplyr to form data frame
+MA_oneout <- lapply(LeaveOneOut_effectsize,function(x) est.func(x)) %>%
+    bind_rows %>%
+    mutate(left_out = levels(dat$leave_out))
+
+
+# telling ggplot to stop reordering factors
+MA_oneout$left_out <- as.factor(MA_oneout$left_out)
+MA_oneout$left_out <- factor(MA_oneout$left_out, levels = MA_oneout$left_out)
+
+# saving the runs
+saveRDS(MA_oneout, here("Rdata", "MA_oneout.RDS"))
+
+```
+
+```{r}
+MA_oneout <- readRDS(here("Rdata", "MA_oneout.RDS"))
+
+# plotting
+leaveoneout <- ggplot(MA_oneout) + geom_hline(yintercept = 0, lty = 2, lwd = 1) +
+    geom_hline(yintercept = mod_ma2$ci.lb, lty = 3, lwd = 0.75, colour = "black") +
+    geom_hline(yintercept = mod_ma2$b, lty = 1, lwd = 0.75, colour = "black") + 
+    geom_hline(yintercept = mod_ma2$ci.ub,
+    lty = 3, lwd = 0.75, colour = "black") + 
+    geom_pointrange(aes(x = left_out, y = est,
+    ymin = lower, ymax = upper)) + 
+     xlab("Study left out") + 
+     ylab("SMD (effect size), 95% CI") +
+    coord_flip() + 
+    theme(panel.grid.minor = element_blank()) + theme_bw() + theme(panel.grid.major = element_blank()) +
+    theme(panel.grid.minor.x = element_blank()) + theme(axis.text.y = element_text(size = 6))
+
+leaveoneout
 
 ```
 
