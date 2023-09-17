@@ -1911,7 +1911,9 @@ combo <- orchard_plot(combined,
              xlab = "Standardised mean differnece (SMD)",
              branch.size = 3) +
           scale_colour_manual(values = rep("grey20",7)) +
-          scale_fill_manual(values = c("#117733", "#332288", "#AA4499", "#88CCEE", "#CC6677", "#DDCC77", "#999999"), ) 
+          scale_fill_manual(values = c("#117733", "#332288", 
+                                       "#AA4499", "#88CCEE", 
+                                       "#CC6677", "#DDCC77", "#999999")) 
           
 homo_mod <- orchard_plot(mod_trt_1, 
              mod = "Treat_mod",
