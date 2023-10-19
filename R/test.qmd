@@ -1470,6 +1470,9 @@ all_models(mod_predt, mod = "PredTo")
 
 ## Meta-regression: multi-moderator
 
+::: {.panel-tabset}
+
+## Mulit-moderator model
 
 ```{r}
 #######################
@@ -1493,6 +1496,12 @@ mod_full <- rma.mv(yi = SMD,
 summary(mod_full)
 
 round(r2_ml(mod_full)*100, 2)
+
+```
+
+## Visualisation
+
+```{r}
 
 orchard_plot(mod_full,
              mod = "Type",
@@ -1521,6 +1530,8 @@ bubble_plot(int_trt, group = "RecNo", mod = "sln_duration", xlab = "ln(duration 
             legend.pos = "top.left", condition.nrow = 3, g = TRUE)
 ```
 
+## Multi-model inference
+
 ```{r}
 # mulit-model selection
 candidates <- dredge(mod_full, trace = 2)
@@ -1533,6 +1544,8 @@ mr_averaged_aic2 <- summary(model.avg(candidates, delta < 5))
 # relative importance of each predictor for all the models
 importance <- sw(candidates)
 ```
+
+:::
 
 ## Publication bias and sensitivty analyses
 
@@ -1591,6 +1604,8 @@ mod_mae <- rma.mv(yi = SMD,
 
 summary(mod_mae)
 
+round(r2_ml(mod_mae)*100, 2)
+
 small <- bubble_plot(mod_mae,
             mod = "sqeffectN",
             group = "RecNo",
@@ -1619,11 +1634,13 @@ mod_mad <- rma.mv(yi = SMD,
 
 summary(mod_mad)
 
+round(r2_ml(mod_mad)*100, 2)
+
 decline <- bubble_plot(mod_mad,
             mod = "Year",
             group = "RecNo",
             xlab = "Publication year",
-            ylab = "SMD (effect size)",
+            ylab = "Standardized mean difference (SMD)",
             g = TRUE)
 decline
 ```
@@ -1650,6 +1667,8 @@ mod_fulle <- rma.mv(yi = SMD,
                    sparse = TRUE,
                    data = dat_short)
 summary(mod_fulle)
+
+round(r2_ml(mod_fulle)*100, 2)
 
 # small-study
 bubble_plot(mod_fulle, group = "RecNo", mod = "sqeffectN", xlab = "ln(duration in days)",
@@ -1766,8 +1785,8 @@ phy_fig1 <- ggtree(tree, branch.length = "branch.length")
 #phy_fig1
 
 phy_fig2 <- phy_fig1 %<+% slist + geom_tiplab(size=2,fontface = "italic") + 
-  geom_tippoint() + 
-  xlim_expand(c(0,120), panel = "Tree") #+ guides(color="none")  
+  geom_tippoint(aes(color= Order), size = 0.5) + 
+  xlim_expand(c(0,120), panel = "Tree") + theme(legend.position = c(0.2, 0.9))
 
 
 phy_fig3 <- facet_plot(phy_fig2, panel = 'k (effect sizes)', data = dat2, 
@@ -1908,7 +1927,7 @@ combined <- submerge(treat5, main)
 combo <- orchard_plot(combined,
              #mod = "Type",
              group = "RecNo", 
-             xlab = "Standardised mean differnece (SMD)",
+             xlab = "Standardised mean difference (SMD)",
              branch.size = 3) +
           scale_colour_manual(values = rep("grey20",7)) +
           scale_fill_manual(values = c("#117733", "#332288", 
@@ -1918,7 +1937,7 @@ combo <- orchard_plot(combined,
 homo_mod <- orchard_plot(mod_trt_1, 
              mod = "Treat_mod",
              group = "RecNo", 
-             xlab = "Standardised mean differnece (SMD)",
+             xlab = "Standardised mean difference (SMD)",
              branch.size = 3,
              legend.pos = "none") + 
           scale_colour_manual(values = rep("grey20",3))
@@ -1926,7 +1945,7 @@ homo_mod <- orchard_plot(mod_trt_1,
 hetero_mod <- orchard_plot(mod_trt_2, 
              mod = "Treat_mod",
              group = "RecNo", 
-             xlab = "Standardised mean differnece (SMD)",
+             xlab = "Standardised mean difference (SMD)",
              branch.size = 3,
 			       legend.pos = "none") + 
           scale_colour_manual(values = rep("grey20",3))
