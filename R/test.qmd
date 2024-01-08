@@ -1481,6 +1481,7 @@ all_models(mod_predt, mod = "PredTo")
 
 dat_short$sln_duration <- scale(log(dat_short$duration_days))
 
+# we need - to
 mod_full <- rma.mv(yi = SMD, 
                V = VCVs, 
                random = list(~1|Spp , 
@@ -1490,7 +1491,7 @@ mod_full <- rma.mv(yi = SMD,
                          sln_duration*Treat_mod +
                          Sex,
                test = "t",
-               method = "REML",
+               method = "REML", # use "ML"
                sparse = TRUE,
                data = dat_short)
 summary(mod_full)
