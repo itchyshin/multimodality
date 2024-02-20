@@ -1491,7 +1491,7 @@ mod_full <- rma.mv(yi = SMD,
                          sln_duration*Treat_mod +
                          Sex,
                test = "t",
-               method = "REML", # use "ML"
+               method = "ML", # use "ML"
                sparse = TRUE,
                data = dat_short)
 summary(mod_full)
