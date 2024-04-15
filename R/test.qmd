@@ -1020,6 +1020,7 @@ ptype2 <- orchard_plot(mod_type2,
              mod = "Type",
              group = "RecNo",
              xlab = "Standardised mean differnece (SMD)",
+             trunk.size = 0.4,
              branch.size = 3)
 
 ptype2
@@ -1942,6 +1943,11 @@ phy_fig5 / map_fig +  plot_annotation(tag_levels = 'A') + plot_layout(heights = 
 # merging results of different models
 
 main <- mod_results(mod_ma, group = "RecNo")
+#main$mod_table$name <- "All" 
+
+# need to check the sample sizes are plotted accurately
+#main$data$moderator <- rep("All", 640)
+
 treat5 <- mod_results(mod_trt, mod = "Treat_mod", group = "RecNo")
 
 combined <- submerge(treat5, main)
@@ -1950,6 +1956,7 @@ combo <- orchard_plot(combined,
              #mod = "Type",
              group = "RecNo", 
              xlab = "Standardised mean difference (SMD)",
+             trunk.size = 0.4,
              branch.size = 3) +
           scale_colour_manual(values = rep("grey20",7)) +
           scale_fill_manual(values = c("#117733", "#332288", 
@@ -1960,6 +1967,7 @@ homo_mod <- orchard_plot(mod_trt_1,
              mod = "Treat_mod",
              group = "RecNo", 
              xlab = "Standardised mean difference (SMD)",
+             trunk.size = 0.4,
              branch.size = 3,
              legend.pos = "none") + 
           scale_colour_manual(values = rep("grey20",3))
@@ -1968,6 +1976,7 @@ hetero_mod <- orchard_plot(mod_trt_2,
              mod = "Treat_mod",
              group = "RecNo", 
              xlab = "Standardised mean difference (SMD)",
+             trunk.size = 0.4,
              branch.size = 3,
 			       legend.pos = "none") + 
           scale_colour_manual(values = rep("grey20",3))
@@ -2030,6 +2039,7 @@ funnel(mod_ma2,
        xlim = c(-10,15),
        digits=c(0,1)
        )
+text(11, 14, expression(italic(k) == 640 (116)), cex = 0.9)
 fun <- recordPlot()
 invisible(dev.off())	   
 
