@@ -1,5 +1,5 @@
 ---
-title: "**Integration of multimodal cues does not alter mean but reduces variance in avian responses to predators: a systematic review and meta-analysis**"
+title: "**A systematic review and meta-analysis of unimodal and multimodal predation risk assessment in birds**"
 subtitle: "**Supplmentary Material**"
 author: "**Kimberley J. Mathot, Josue David Arteaga-Torres, Anne Besson, Deborah M. Hawkshaw, Natasha Klappstein, Rebekah A. McKinnon, Sheeraja Sridharan, and Shinichi Nakagawa**"
 date: "`r Sys.Date()`"
